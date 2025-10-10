@@ -1,13 +1,103 @@
-<script setup>
+<script setup lang="ts">
+import type { LoginPayload } from '@/api/auth';
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
-import { ref } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { useToast } from 'primevue/usetoast';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
-const email = ref('');
-const password = ref('');
-const checked = ref(false);
+const authStore = useAuthStore();
+const toast = useToast();
+
+const email = ref<string>('');
+const password = ref<string>('');
+const checked = ref<boolean>(false);
+const errors = reactive<{ email: string; password: string }>({
+    email: '',
+    password: ''
+});
+
+onMounted(() => {
+    const remembered = localStorage.getItem('rememberMe') === 'true';
+    const rememberedEmail = localStorage.getItem('rememberedEmail') || '';
+    if (remembered && rememberedEmail) {
+        checked.value = true;
+        email.value = rememberedEmail;
+    }
+});
+
+const isLoading = computed(() => authStore.isLoading);
+
+watch(email, (value: string) => {
+    if (errors.email && value.trim()) {
+        errors.email = '';
+    }
+});
+
+watch(password, (value: string) => {
+    if (errors.password && value.trim()) {
+        errors.password = '';
+    }
+});
+
+function validate(): boolean {
+    let valid = true;
+    errors.email = '';
+    errors.password = '';
+
+    if (!email.value.trim()) {
+        errors.email = '邮箱不能为空';
+        valid = false;
+    }
+
+    if (!password.value.trim()) {
+        errors.password = '密码不能为空';
+        valid = false;
+    }
+
+    return valid;
+}
+
+async function onSubmit(): Promise<void> {
+    if (!validate()) {
+        return;
+    }
+
+    const loginPayload: LoginPayload = {
+        email: email.value,
+        password: password.value,
+        rememberMe: checked.value
+    };
+
+    if (checked.value) {
+        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('rememberedEmail', email.value);
+    } else {
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('rememberedEmail');
+    }
+
+    const result = await authStore.login(loginPayload, undefined);
+
+    if (!result.success) {
+        toast.add({
+            severity: 'error',
+            summary: '登录失败',
+            detail: result.message,
+            life: 4000
+        });
+    } else {
+        toast.add({
+            severity: 'success',
+            summary: '登录成功',
+            detail: result.message,
+            life: 2000
+        });
+    }
+}
 </script>
 
 <template>
+    <Toast />
     <FloatingConfigurator />
     <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
         <div class="flex flex-col items-center justify-center">
@@ -31,26 +121,55 @@ const checked = ref(false);
                                 />
                             </g>
                         </svg>
-                        <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Welcome to PrimeLand!</div>
-                        <span class="text-muted-color font-medium">Sign in to continue</span>
+                        <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">欢迎来到 Code 后台</div>
+                        <span class="text-muted-color font-medium">请登录以继续</span>
                     </div>
 
-                    <div>
-                        <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
-                        <InputText id="email1" type="text" placeholder="Email address" class="w-full md:w-[30rem] mb-8" v-model="email" />
+                    <form @submit.prevent="onSubmit" class="flex flex-col">
+                        <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">邮箱</label>
+                        <div class="mb-6 flex flex-col gap-2">
+                            <InputText
+                                id="email1"
+                                type="text"
+                                placeholder="邮箱地址"
+                                class="w-full md:w-[30rem]"
+                                v-model="email"
+                                :invalid="!!errors.email"
+                                autocomplete="username"
+                            />
+                            <InlineMessage v-if="errors.email" severity="error">{{ errors.email }}</InlineMessage>
+                        </div>
 
-                        <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
-                        <Password id="password1" v-model="password" placeholder="Password" :toggleMask="true" class="mb-4" fluid :feedback="false"></Password>
+                        <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">密码</label>
+                        <div class="mb-6 flex flex-col gap-2">
+                            <Password
+                                id="password1"
+                                v-model="password"
+                                placeholder="密码"
+                                :toggleMask="true"
+                                class="mb-0"
+                                fluid
+                                :feedback="false"
+                                :invalid="!!errors.password"
+                                autocomplete="current-password"
+                            ></Password>
+                            <InlineMessage v-if="errors.password" severity="error">{{ errors.password }}</InlineMessage>
+                        </div>
 
                         <div class="flex items-center justify-between mt-2 mb-8 gap-8">
                             <div class="flex items-center">
                                 <Checkbox v-model="checked" id="rememberme1" binary class="mr-2"></Checkbox>
-                                <label for="rememberme1">Remember me</label>
+                                <label for="rememberme1">记住我</label>
                             </div>
-                            <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot password?</span>
+                            <RouterLink
+                                to="/auth/forgot-password"
+                                class="font-medium no-underline ml-2 text-right cursor-pointer text-primary hover:underline"
+                            >
+                                忘记密码?
+                            </RouterLink>
                         </div>
-                        <Button label="Sign In" class="w-full" as="router-link" to="/"></Button>
-                    </div>
+                        <Button type="submit" label="登录" class="w-full" :loading="isLoading" :disabled="isLoading"></Button>
+                    </form>
                 </div>
             </div>
         </div>
