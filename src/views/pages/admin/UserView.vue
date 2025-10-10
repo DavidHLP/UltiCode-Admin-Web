@@ -501,45 +501,62 @@ onBeforeUnmount(() => {
                     </template>
                 </DataTable>
 
-                <Dialog v-model:visible="dialogVisible" :modal="true" :header="dialogTitle" :style="{ width: '480px' }" :closable="!dialogLoading" :draggable="false" @hide="onDialogHide">
-                    <form class="flex flex-col gap-4" @submit.prevent="submitForm">
-                        <div class="grid formgrid gap-3">
-                            <div class="col-12">
-                                <label for="username" class="font-semibold block mb-2">用户名</label>
-                                <InputText id="username" v-model.trim="form.username" placeholder="请输入用户名" :invalid="!!formErrors.username" />
-                                <small v-if="formErrors.username" class="p-error">{{ formErrors.username }}</small>
+                <Dialog v-model:visible="dialogVisible" :modal="true" :header="dialogTitle" :style="{ width: '520px' }" :closable="!dialogLoading" :draggable="false" contentClass="p-0" @hide="onDialogHide">
+                    <form class="flex flex-col gap-6 p-6" @submit.prevent="submitForm">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div class="flex flex-col gap-2">
+                                <label for="username" class="text-sm font-medium text-color-secondary">用户名</label>
+                                <InputGroup>
+                                    <InputGroupAddon>
+                                        <i class="pi pi-user text-color-secondary" />
+                                    </InputGroupAddon>
+                                    <InputText id="username" v-model.trim="form.username" placeholder="请输入用户名" :invalid="!!formErrors.username" class="w-full" />
+                                </InputGroup>
+                                <small v-if="formErrors.username" class="text-xs text-red-500">{{ formErrors.username }}</small>
                             </div>
 
-                            <div class="col-12">
-                                <label for="email" class="font-semibold block mb-2">邮箱</label>
-                                <InputText id="email" v-model.trim="form.email" placeholder="请输入邮箱" :invalid="!!formErrors.email" />
-                                <small v-if="formErrors.email" class="p-error">{{ formErrors.email }}</small>
+                            <div class="flex flex-col gap-2">
+                                <label for="email" class="text-sm font-medium text-color-secondary">邮箱</label>
+                                <InputGroup>
+                                    <InputGroupAddon>
+                                        <i class="pi pi-envelope text-color-secondary" />
+                                    </InputGroupAddon>
+                                    <InputText id="email" v-model.trim="form.email" placeholder="请输入邮箱" :invalid="!!formErrors.email" class="w-full" />
+                                </InputGroup>
+                                <small v-if="formErrors.email" class="text-xs text-red-500">{{ formErrors.email }}</small>
                             </div>
 
-                            <div class="col-12" v-if="!isEditMode">
-                                <label for="password" class="font-semibold block mb-2">初始密码</label>
-                                <Password id="password" v-model.trim="form.password" toggleMask :feedback="false" placeholder="请输入初始密码" :invalid="!!formErrors.password" />
-                                <small v-if="formErrors.password" class="p-error">{{ formErrors.password }}</small>
+                            <div v-if="!isEditMode" class="flex flex-col gap-2 md:col-span-2">
+                                <label for="password" class="text-sm font-medium text-color-secondary">初始密码</label>
+                                <Password id="password" v-model.trim="form.password" toggleMask :feedback="false" placeholder="请输入初始密码" :invalid="!!formErrors.password" inputClass="w-full" />
+                                <small v-if="formErrors.password" class="text-xs text-red-500">{{ formErrors.password }}</small>
                             </div>
 
-                            <div class="col-12">
-                                <label for="status" class="font-semibold block mb-2">状态</label>
-                                <Select id="status" v-model="form.status" :options="statusFormOptions" optionLabel="label" optionValue="value" placeholder="请选择状态" :invalid="!!formErrors.status" />
-                                <small v-if="formErrors.status" class="p-error">{{ formErrors.status }}</small>
+                            <div class="flex flex-col gap-2">
+                                <label for="status" class="text-sm font-medium text-color-secondary">状态</label>
+                                <Select id="status" v-model="form.status" :options="statusFormOptions" optionLabel="label" optionValue="value" placeholder="请选择状态" :invalid="!!formErrors.status" class="w-full" />
+                                <small v-if="formErrors.status" class="text-xs text-red-500">{{ formErrors.status }}</small>
                             </div>
 
-                            <div class="col-12">
-                                <label for="introduction" class="font-semibold block mb-2">个人简介</label>
-                                <Textarea id="introduction" v-model.trim="form.introduction" autoResize rows="3" placeholder="请输入简介" />
+                            <div class="flex flex-col gap-2 md:col-span-2">
+                                <label for="introduction" class="text-sm font-medium text-color-secondary">个人简介</label>
+                                <Textarea id="introduction" v-model.trim="form.introduction" autoResize rows="3" placeholder="请输入简介" class="w-full" />
                             </div>
 
-                            <div class="col-12">
-                                <label for="address" class="font-semibold block mb-2">地址</label>
-                                <InputText id="address" v-model.trim="form.address" placeholder="请输入地址" />
+                            <div class="flex flex-col gap-2 md:col-span-2">
+                                <label for="address" class="text-sm font-medium text-color-secondary">地址</label>
+                                <InputGroup>
+                                    <InputGroupAddon>
+                                        <i class="pi pi-map-marker text-color-secondary" />
+                                    </InputGroupAddon>
+                                    <InputText id="address" v-model.trim="form.address" placeholder="请输入地址" class="w-full" />
+                                </InputGroup>
                             </div>
                         </div>
 
-                        <div class="flex justify-end gap-2 pt-2">
+                        <Divider class="my-0" />
+
+                        <div class="flex justify-end gap-2">
                             <Button type="button" label="取消" severity="secondary" outlined :disabled="dialogLoading" @click="dialogVisible = false" />
                             <Button type="submit" label="保存" :loading="dialogLoading" />
                         </div>
