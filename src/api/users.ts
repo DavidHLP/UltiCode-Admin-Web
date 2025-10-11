@@ -1,11 +1,6 @@
 import { requestData } from '@/utils/request';
 import { Page } from '@/utils/types';
-
-export interface Role {
-    roleId?: number | string;
-    roleName: string;
-    [key: string]: unknown;
-}
+import type { Role } from './role';
 
 export interface UserRecord {
     userId: number;
@@ -37,7 +32,7 @@ export interface UpsertUserPayload {
     introduction?: string | null;
     address?: string | null;
     status?: number | null;
-    roleIds?: Array<number | string> | null;
+    roles?: Role[] | null;
 }
 
 export function fetchUsers(params: QueryUsersPayload = {}) {

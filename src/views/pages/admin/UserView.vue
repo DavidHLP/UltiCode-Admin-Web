@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { createUser, deleteUser, fetchUsers, updateUser, type QueryUsersPayload, type Role, type UpsertUserPayload, type UserRecord } from '@/api/users';
+import { getRoleList, type Role } from '@/api/role';
+import { createUser, deleteUser, fetchUsers, updateUser, type QueryUsersPayload, type UpsertUserPayload, type UserRecord } from '@/api/users';
 import { emitErrorToast, emitSuccessToast } from '@/utils/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
@@ -7,6 +8,10 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 interface StatusOption {
     label: string;
     value: number | null;
+}
+
+interface LoadUsersOptions {
+    silent?: boolean;
 }
 
 const users = ref<UserRecord[]>([]);
@@ -34,6 +39,7 @@ interface UserForm {
     status: number | null;
     introduction: string;
     address: string;
+    roles: Array<number | string>;
 }
 
 const confirm = useConfirm();
@@ -45,14 +51,23 @@ const dialogVisible = ref(false);
 const dialogMode = ref<'create' | 'edit'>('create');
 const dialogLoading = ref(false);
 const form = reactive<UserForm>(getEmptyForm());
-const formErrors = reactive<{ username?: string; email?: string; password?: string; status?: string }>({});
+const formErrors = reactive<{ username?: string; email?: string; password?: string; status?: string; roles?: string }>({});
+const roleOptions = ref<Role[]>([]);
+const rolesLoading = ref(false);
 
 const dialogTitle = computed(() => (dialogMode.value === 'create' ? '新建用户' : '编辑用户'));
 const isEditMode = computed(() => dialogMode.value === 'edit');
 
-async function loadUsers(paramsOverride: Partial<QueryUsersPayload> = {}) {
-    loading.value = true;
+async function loadUsers(paramsOverride: Partial<QueryUsersPayload> = {}, options: LoadUsersOptions = {}) {
+    const { silent = false } = options;
     const requestId = ++requestToken;
+    let loadingTimer: ReturnType<typeof setTimeout> | undefined;
+
+    if (!silent) {
+        loadingTimer = setTimeout(() => {
+            loading.value = true;
+        }, 120);
+    }
 
     const payload: QueryUsersPayload = {
         page: currentPage.value,
@@ -89,7 +104,14 @@ async function loadUsers(paramsOverride: Partial<QueryUsersPayload> = {}) {
         }
     } finally {
         if (requestId === requestToken) {
-            loading.value = false;
+            if (loadingTimer) {
+                clearTimeout(loadingTimer);
+            }
+            if (!silent) {
+                loading.value = false;
+            } else if (loading.value) {
+                loading.value = false;
+            }
         }
     }
 }
@@ -179,7 +201,7 @@ function handleStatusChange(value: number | null | undefined) {
 }
 
 function refresh() {
-    loadUsers();
+    loadUsers({}, { silent: true });
 }
 
 function clearFilters() {
@@ -197,7 +219,8 @@ function getEmptyForm(): UserForm {
         password: '',
         status: 1,
         introduction: '',
-        address: ''
+        address: '',
+        roles: []
     };
 }
 
@@ -210,6 +233,8 @@ function resetForm(record?: UserRecord) {
         base.status = record.status ?? null;
         base.introduction = record.introduction ?? '';
         base.address = record.address ?? '';
+        const rolesFromRecord = extractrolesFromRecord(record);
+        base.roles = rolesFromRecord;
     }
     Object.assign(form, base);
     clearFormErrors();
@@ -220,17 +245,20 @@ function clearFormErrors() {
     formErrors.email = undefined;
     formErrors.password = undefined;
     formErrors.status = undefined;
+    formErrors.roles = undefined;
 }
 
 function openCreateDialog() {
     dialogMode.value = 'create';
     resetForm();
+    ensureRolesLoaded();
     dialogVisible.value = true;
 }
 
 function openEditDialog(record: UserRecord) {
     dialogMode.value = 'edit';
     resetForm(record);
+    ensureRolesLoaded();
     dialogVisible.value = true;
 }
 
@@ -267,7 +295,25 @@ function validateForm(): boolean {
         valid = false;
     }
 
+    if (!rolesLoading.value && roleOptions.value.length && form.roles.length === 0) {
+        formErrors.roles = '请选择至少一个角色';
+        valid = false;
+    }
+
     return valid;
+}
+
+function resolveSelectedRoles(): Role[] {
+    if (!form.roles.length) {
+        return [];
+    }
+
+    return form.roles
+        .map((identifier) => {
+            const normalized = String(identifier);
+            return roleOptions.value.find((role) => String(role.id) === normalized);
+        })
+        .filter((role): role is Role => Boolean(role));
 }
 
 function buildPayload(): UpsertUserPayload {
@@ -276,7 +322,11 @@ function buildPayload(): UpsertUserPayload {
         email: form.email.trim() || null,
         introduction: form.introduction.trim() || null,
         address: form.address.trim() || null,
-        status: form.status
+        status: form.status,
+        roles: (() => {
+            const selected = resolveSelectedRoles();
+            return selected.length ? selected : null;
+        })()
     };
 
     if (dialogMode.value === 'create') {
@@ -301,6 +351,7 @@ async function submitForm() {
             currentPage.value = 1;
             await loadUsers({ page: 1 });
         } else if (form.userId !== undefined) {
+            console.log('Updating user with ID:', form.userId, 'Payload:', payload);
             await updateUser(form.userId, payload);
             emitSuccessToast('更新用户成功');
             await loadUsers({ page: currentPage.value });
@@ -339,10 +390,8 @@ function confirmDeleteUser(record: UserRecord) {
 }
 
 function resolveRoles(record: UserRecord): Role[] {
-    if (Array.isArray(record.roles) && record.roles.length > 0) {
-        return record.roles.filter(Boolean) as Role[];
-    }
-    return record.role ? [record.role] : [];
+    const many = Array.isArray(record.roles) ? record.roles : record.role ? [record.role] : [];
+    return many.filter((role): role is Role => Boolean(role));
 }
 
 function resolveStatusMeta(status?: number | null) {
@@ -375,7 +424,48 @@ function formatDate(value?: string | null) {
 
 onMounted(() => {
     loadUsers();
+    loadRoles();
 });
+
+async function loadRoles() {
+    if (rolesLoading.value) return;
+    rolesLoading.value = true;
+    try {
+        const response = await getRoleList();
+        roleOptions.value = Array.isArray(response) ? response : [];
+    } catch (error) {
+        console.error('获取角色列表失败:', error);
+        emitErrorToast('获取角色列表失败，请稍后重试');
+    } finally {
+        rolesLoading.value = false;
+    }
+}
+
+function ensureRolesLoaded() {
+    if (!roleOptions.value.length && !rolesLoading.value) {
+        loadRoles();
+    }
+}
+
+function extractrolesFromRecord(record: UserRecord): Array<number | string> {
+    const sources = Array.isArray(record.roles) ? record.roles : record.role ? [record.role] : [];
+    return sources.map((role) => extractRoleId(role)).filter((id): id is number | string => id !== undefined && id !== null);
+}
+
+function extractRoleId(role: unknown): number | string | undefined {
+    if (!role || typeof role !== 'object') {
+        return undefined;
+    }
+    const roleObj = role as Record<string, unknown>;
+    const idCandidate = roleObj.id ?? roleObj.roleId ?? roleObj.value;
+    if (typeof idCandidate === 'number' && Number.isFinite(idCandidate)) {
+        return idCandidate;
+    }
+    if (typeof idCandidate === 'string' && idCandidate.trim() !== '') {
+        return idCandidate;
+    }
+    return undefined;
+}
 
 onBeforeUnmount(() => {
     if (searchTimer) clearTimeout(searchTimer);
@@ -459,7 +549,7 @@ onBeforeUnmount(() => {
                     <Column header="角色" style="min-width: 12rem">
                         <template #body="{ data }">
                             <div class="flex flex-wrap gap-2">
-                                <Tag v-for="role in resolveRoles(data)" :key="role.roleId || role.roleName" :value="role.roleName" severity="info" rounded />
+                                <Tag v-for="role in resolveRoles(data)" :key="role.id || role.roleName" :value="role.roleName" severity="info" rounded />
                                 <span v-if="resolveRoles(data).length === 0" class="text-color-secondary">未分配</span>
                             </div>
                         </template>
@@ -502,48 +592,26 @@ onBeforeUnmount(() => {
                 </DataTable>
 
                 <Dialog v-model:visible="dialogVisible" :modal="true" :header="dialogTitle" :style="{ width: '520px' }" :closable="!dialogLoading" :draggable="false" contentClass="p-0" @hide="onDialogHide">
-                    <form class="flex flex-col gap-6 p-6" @submit.prevent="submitForm">
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <div class="flex flex-col gap-2">
+                    <form class="flex flex-col gap-5 p-6" @submit.prevent="submitForm">
+                        <div class="grid gap-5 md:grid-cols-2">
+                            <!-- 用户名（不使用 FloatLabel） -->
+                            <div class="flex flex-col w-full">
                                 <label for="username" class="text-sm font-medium text-color-secondary">用户名</label>
                                 <InputGroup>
                                     <InputGroupAddon>
                                         <i class="pi pi-user text-color-secondary" />
                                     </InputGroupAddon>
-                                    <InputText id="username" v-model.trim="form.username" placeholder="请输入用户名" :invalid="!!formErrors.username" class="w-full" />
+                                    <InputText id="username" v-model.trim="form.username" :invalid="!!formErrors.username" placeholder="请输入用户名" class="w-full" />
                                 </InputGroup>
-                                <small v-if="formErrors.username" class="text-xs text-red-500">{{ formErrors.username }}</small>
+                                <Transition name="fade">
+                                    <small v-if="formErrors.username" class="block mt-1 text-xs text-red-500">
+                                        {{ formErrors.username }}
+                                    </small>
+                                </Transition>
                             </div>
 
-                            <div class="flex flex-col gap-2">
-                                <label for="email" class="text-sm font-medium text-color-secondary">邮箱</label>
-                                <InputGroup>
-                                    <InputGroupAddon>
-                                        <i class="pi pi-envelope text-color-secondary" />
-                                    </InputGroupAddon>
-                                    <InputText id="email" v-model.trim="form.email" placeholder="请输入邮箱" :invalid="!!formErrors.email" class="w-full" />
-                                </InputGroup>
-                                <small v-if="formErrors.email" class="text-xs text-red-500">{{ formErrors.email }}</small>
-                            </div>
-
-                            <div v-if="!isEditMode" class="flex flex-col gap-2 md:col-span-2">
-                                <label for="password" class="text-sm font-medium text-color-secondary">初始密码</label>
-                                <Password id="password" v-model.trim="form.password" toggleMask :feedback="false" placeholder="请输入初始密码" :invalid="!!formErrors.password" inputClass="w-full" />
-                                <small v-if="formErrors.password" class="text-xs text-red-500">{{ formErrors.password }}</small>
-                            </div>
-
-                            <div class="flex flex-col gap-2">
-                                <label for="status" class="text-sm font-medium text-color-secondary">状态</label>
-                                <Select id="status" v-model="form.status" :options="statusFormOptions" optionLabel="label" optionValue="value" placeholder="请选择状态" :invalid="!!formErrors.status" class="w-full" />
-                                <small v-if="formErrors.status" class="text-xs text-red-500">{{ formErrors.status }}</small>
-                            </div>
-
-                            <div class="flex flex-col gap-2 md:col-span-2">
-                                <label for="introduction" class="text-sm font-medium text-color-secondary">个人简介</label>
-                                <Textarea id="introduction" v-model.trim="form.introduction" autoResize rows="3" placeholder="请输入简介" class="w-full" />
-                            </div>
-
-                            <div class="flex flex-col gap-2 md:col-span-2">
+                            <!-- 地址（不使用 FloatLabel） -->
+                            <div class="flex flex-col w-full">
                                 <label for="address" class="text-sm font-medium text-color-secondary">地址</label>
                                 <InputGroup>
                                     <InputGroupAddon>
@@ -552,11 +620,55 @@ onBeforeUnmount(() => {
                                     <InputText id="address" v-model.trim="form.address" placeholder="请输入地址" class="w-full" />
                                 </InputGroup>
                             </div>
+                            <!-- 状态（FloatLabel） -->
+                            <FloatLabel class="flex flex-col w-full" variant="on">
+                                <Select id="status" v-model="form.status" :options="statusFormOptions" optionLabel="label" optionValue="value" display="chip" :invalid="!!formErrors.status" class="w-full" />
+                                <label for="status">状态</label>
+                            </FloatLabel>
+
+                            <!-- 角色（FloatLabel） -->
+                            <FloatLabel class="flex flex-col w-full" variant="on">
+                                <MultiSelect id="roles" v-model="form.roles" :options="roleOptions" optionLabel="roleName" optionValue="id" display="chip" :loading="rolesLoading" :disabled="rolesLoading && !roleOptions.length" class="w-full" />
+                                <label for="roles">角色</label>
+                            </FloatLabel>
+
+                            <!-- 初始化密码（仅创建时显示） -->
+                            <div v-if="!isEditMode" class="flex flex-col w-full">
+                                <label for="password" class="text-sm font-medium text-color-secondary">初始化密码</label>
+                                <Password id="password" v-model.trim="form.password" placeholder="请输入初始密码" :toggleMask="true" fluid :feedback="false" :invalid="!!formErrors.password" autocomplete="new-password" />
+                                <Transition name="fade">
+                                    <small v-if="formErrors.password" class="block mt-1 text-xs text-red-500">
+                                        {{ formErrors.password }}
+                                    </small>
+                                </Transition>
+                            </div>
+
+                            <!-- 邮箱 -->
+                            <div class="flex flex-col w-full">
+                                <label for="email" class="text-sm font-medium text-color-secondary">邮箱</label>
+                                <InputGroup>
+                                    <InputGroupAddon>
+                                        <i class="pi pi-envelope text-color-secondary" />
+                                    </InputGroupAddon>
+                                    <InputText id="email" v-model.trim="form.email" type="email" :invalid="!!formErrors.email" placeholder="请输入邮箱地址" autocomplete="email" class="w-full" />
+                                </InputGroup>
+                                <Transition name="fade">
+                                    <small v-if="formErrors.email" class="block mt-1 text-xs text-red-500">
+                                        {{ formErrors.email }}
+                                    </small>
+                                </Transition>
+                            </div>
+
+                            <!-- 个人简介（FloatLabel） -->
+                            <FloatLabel class="md:col-span-2 w-full" variant="on">
+                                <Textarea id="introduction" v-model.trim="form.introduction" autoResize rows="3" class="w-full" />
+                                <label for="introduction">个人简介</label>
+                            </FloatLabel>
                         </div>
 
-                        <Divider class="my-0" />
+                        <Divider class="my-1" />
 
-                        <div class="flex justify-end gap-2">
+                        <div class="flex justify-end gap-2 mt-2">
                             <Button type="button" label="取消" severity="secondary" outlined :disabled="dialogLoading" @click="dialogVisible = false" />
                             <Button type="submit" label="保存" :loading="dialogLoading" />
                         </div>
