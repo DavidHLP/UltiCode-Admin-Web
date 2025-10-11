@@ -1,27 +1,27 @@
 <script setup>
-import { subscribeToast, unsubscribeToast } from '@/utils/toast'
-import { useToast } from 'primevue/usetoast'
-import { onBeforeUnmount, onMounted } from 'vue'
+import { subscribeToast, unsubscribeToast } from '@/utils/toast';
+import { useToast } from 'primevue/usetoast';
+import { onBeforeUnmount, onMounted } from 'vue';
 
-const toast = useToast()
+const toast = useToast();
 
 function handleToast(payload) {
-  if (Array.isArray(payload)) {
-    payload.filter(Boolean).forEach((item) => toast.add(item))
-  } else if (payload) {
-    toast.add(payload)
-  }
+    if (Array.isArray(payload)) {
+        payload.filter(Boolean).forEach((item) => toast.add(item));
+    } else if (payload) {
+        toast.add(payload);
+    }
 }
 
 onMounted(() => {
-  subscribeToast(handleToast)
-})
+    subscribeToast(handleToast);
+});
 
 onBeforeUnmount(() => {
-  unsubscribeToast(handleToast)
-})
+    unsubscribeToast(handleToast);
+});
 </script>
 
 <template>
-  <Toast position="top-right" />
+    <Toast position="top-right" />
 </template>

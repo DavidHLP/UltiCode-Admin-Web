@@ -12,7 +12,8 @@ const model = ref([
         label: 'Admin',
         items: [
             { label: 'User Management', icon: 'pi pi-fw pi-users', to: '/admin/users' },
-            { label: 'Role Management', icon: 'pi pi-fw pi-users', to: '/admin/roles' }
+            { label: 'Role Management', icon: 'pi pi-fw pi-users', to: '/admin/roles' },
+            { label: 'Problem Management', icon: 'pi pi-fw pi-list', to: '/admin/problems' }
         ]
     },
     {

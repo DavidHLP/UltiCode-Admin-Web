@@ -48,8 +48,9 @@ export const CategoryTypeLabel: Record<CategoryType, string> = {
 };
 
 export interface QueryProblemPayload {
-    page: number;
-    size: number;
+    page?: number;
+    pageSize?: number;
+    size?: number;
     keyword?: string;
     difficulty?: ProblemDifficulty;
     category?: CategoryType;
@@ -57,10 +58,44 @@ export interface QueryProblemPayload {
     sort?: string;
 }
 
-export const fetchProblem = async (payload: QueryProblemPayload): Promise<Page<Problem>> => {
+export interface UpsertProblemPayload {
+    problemType: ProblemType;
+    solutionFunctionName: string;
+    title: string;
+    description: string;
+    difficulty: ProblemDifficulty;
+    category: CategoryType;
+    tags?: string[] | null;
+    isVisible?: boolean;
+}
+
+export const fetchProblem = async (payload: QueryProblemPayload = {}): Promise<Page<Problem>> => {
     return requestData<Page<Problem>>({
-        url: '/problem/api/problems',
+        url: '/problems/api/management/problem/page',
         method: 'get',
         params: payload
+    });
+};
+
+export const createProblem = async (payload: UpsertProblemPayload): Promise<Problem> => {
+    return requestData<Problem>({
+        url: '/problems/api/management/problem',
+        method: 'post',
+        data: payload
+    });
+};
+
+export const updateProblem = async (problemId: number | string, payload: UpsertProblemPayload): Promise<Problem> => {
+    return requestData<Problem>({
+        url: `/problems/api/management/problem/${problemId}`,
+        method: 'put',
+        data: payload
+    });
+};
+
+export const deleteProblem = async (problemId: number): Promise<void> => {
+    return requestData<void>({
+        url: `/problems/api/management/problem/${problemId}`,
+        method: 'delete'
     });
 };
