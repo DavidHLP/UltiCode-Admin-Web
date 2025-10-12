@@ -9,9 +9,13 @@
         "type-check": "vue-tsc --noEmit"
     },
     "dependencies": {
+        "@bytemd/plugin-gfm": "^1.22.0",
+        "@bytemd/plugin-highlight": "^1.22.0",
+        "@bytemd/vue-next": "^1.22.0",
         "@primeuix/themes": "^1.0.0",
         "axios": "^1.12.2",
         "chart.js": "3.3.2",
+        "highlight.js": "^11.11.1",
         "pinia": "^3.0.3",
         "primeicons": "^7.0.0",
         "primevue": "^4.3.1",

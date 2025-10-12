@@ -70,6 +70,8 @@ declare module 'vue' {
     PickList: typeof import('primevue/picklist')['default']
     Popover: typeof import('primevue/popover')['default']
     PricingWidget: typeof import('./src/components/landing/PricingWidget.vue')['default']
+    ProblemDescriptionEditor: typeof import('./src/components/problem/ProblemDescriptionEditor.vue')['default']
+    ProblemDescriptionViewer: typeof import('./src/components/problem/ProblemDescriptionViewer.vue')['default']
     ProgressBar: typeof import('primevue/progressbar')['default']
     RadioButton: typeof import('primevue/radiobutton')['default']
     Rating: typeof import('primevue/rating')['default']

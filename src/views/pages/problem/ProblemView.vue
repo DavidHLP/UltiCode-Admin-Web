@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { CategoryType, CategoryTypeLabel, ProblemDifficulty, ProblemType, createProblem, deleteProblem, fetchProblem, updateProblem, type Problem, type QueryProblemPayload, type UpsertProblemPayload } from '@/api/problem';
+import ProblemDescriptionEditor from '@/components/problem/ProblemDescriptionEditor.vue';
+import ProblemDescriptionViewer from '@/components/problem/ProblemDescriptionViewer.vue';
 import { emitErrorToast, emitSuccessToast } from '@/utils/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
@@ -73,6 +75,43 @@ const confirm = useConfirm();
 const router = useRouter();
 
 const expandedRows = ref<Problem[]>([]);
+
+const defaultProblemDescription = String.raw`## 题目描述
+
+在这里阐述题目的背景、目标以及需要实现的核心能力，帮助读者快速理解题意。
+
+## 输入描述
+
+- 输入格式及顺序
+- 每个参数的取值范围与约束
+
+## 输出描述
+
+- 输出格式要求
+- 判题标准或特殊说明
+
+## 示例
+
+### 示例 1
+
+**输入**
+\`\`\`
+# 在此处放置样例输入
+\`\`\`
+
+**输出**
+\`\`\`
+# 在此处放置对应输出
+\`\`\`
+
+**解释**
+- 说明样例的求解思路或关键细节
+
+## 提示
+
+- 给出重要的边界条件或性能要求
+- 必要时补充时间/空间复杂度限制
+`;
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let requestToken = 0;
@@ -271,7 +310,7 @@ function getEmptyForm(): ProblemForm {
         problemType: '',
         solutionFunctionName: '',
         title: '',
-        description: '',
+        description: defaultProblemDescription,
         difficulty: '',
         category: '',
         tagsText: '',
@@ -624,7 +663,7 @@ onBeforeUnmount(() => {
                         <div class="expansion-panel">
                             <div class="expansion-section">
                                 <span class="expansion-title">题目简介</span>
-                                <p class="expansion-description">{{ data.description || '暂无题目描述' }}</p>
+                                <ProblemDescriptionViewer :content="data.description" />
                             </div>
 
                             <div class="expansion-grid">
@@ -719,11 +758,11 @@ onBeforeUnmount(() => {
                                 <InputText id="tags" v-model.trim="form.tagsText" placeholder="例如：数组, 动态规划" class="w-full" />
                             </div>
 
-                            <div class="flex flex-col w-full md:col-span-2">
+                            <div class="flex flex-col w-full gap-2 md:col-span-2">
                                 <label for="description" class="text-sm font-medium text-color-secondary">题目描述</label>
-                                <Textarea id="description" v-model.trim="form.description" :invalid="!!formErrors.description" rows="6" autoResize class="w-full" />
+                                <ProblemDescriptionEditor id="description" v-model="form.description" placeholder="支持 Markdown 语法，建议参照 LeetCode 风格编写题目描述、输入输出与示例。" />
                                 <Transition name="fade">
-                                    <small v-if="formErrors.description" class="block mt-1 text-xs text-red-500">
+                                    <small v-if="formErrors.description" class="block -mt-1 text-xs text-red-500">
                                         {{ formErrors.description }}
                                     </small>
                                 </Transition>
@@ -769,11 +808,11 @@ onBeforeUnmount(() => {
     font-size: 1rem;
 }
 
-.expansion-description {
-    margin: 0;
-    white-space: pre-wrap;
-    line-height: 1.6;
-    font-size: 0.95rem;
+.expansion-section :deep(.problem-description-viewer) {
+    border: 1px solid var(--surface-border);
+    border-radius: var(--border-radius);
+    background: var(--surface-card);
+    padding: 1rem;
 }
 
 .expansion-grid {
