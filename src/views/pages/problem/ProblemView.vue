@@ -2,7 +2,8 @@
 import { CategoryType, CategoryTypeLabel, ProblemDifficulty, ProblemType, createProblem, deleteProblem, fetchProblem, updateProblem, type Problem, type QueryProblemPayload, type UpsertProblemPayload } from '@/api/problem';
 import { emitErrorToast, emitSuccessToast } from '@/utils/toast';
 import { useConfirm } from 'primevue/useconfirm';
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import ProblemTestCaseDialog from './ProblemTestCaseDialog.vue';
 
 interface StatusOption<T> {
     label: string;
@@ -88,6 +89,15 @@ const formErrors = reactive<{
 
 const dialogTitle = computed(() => (dialogMode.value === 'create' ? '新建题目' : '编辑题目'));
 const isEditMode = computed(() => dialogMode.value === 'edit');
+
+const testCaseDialogVisible = ref(false);
+const activeProblemForTestCase = ref<Problem | null>(null);
+
+watch(testCaseDialogVisible, (visible) => {
+    if (!visible) {
+        activeProblemForTestCase.value = null;
+    }
+});
 
 async function loadProblems(paramsOverride: Partial<QueryProblemPayload> = {}, options: LoadProblemOptions = {}) {
     const { silent = false } = options;
@@ -251,6 +261,10 @@ function refresh() {
     loadProblems({}, { silent: true });
 }
 
+function handleTestCaseSaved() {
+    refresh();
+}
+
 function clearFilters() {
     keyword.value = '';
     selectedDifficulty.value = null;
@@ -310,6 +324,11 @@ function openEditDialog(record: Problem) {
     dialogMode.value = 'edit';
     resetForm(record);
     dialogVisible.value = true;
+}
+
+function openTestCaseDialog(record: Problem) {
+    activeProblemForTestCase.value = record;
+    testCaseDialogVisible.value = true;
 }
 
 function onDialogHide() {
@@ -606,9 +625,10 @@ onBeforeUnmount(() => {
                         </template>
                     </Column>
 
-                    <Column header="操作" style="width: 10rem" bodyClass="text-right">
+                    <Column header="操作" style="width: 14rem" bodyClass="text-right">
                         <template #body="{ data }">
                             <div class="flex justify-end gap-2">
+                                <Button icon="pi pi-list" label="测试用例" severity="info" text size="small" @click="openTestCaseDialog(data)" />
                                 <Button icon="pi pi-pencil" label="编辑" severity="secondary" text size="small" @click="openEditDialog(data)" />
                                 <Button icon="pi pi-trash" label="删除" severity="danger" text size="small" @click="confirmDeleteProblem(data)" />
                             </div>
@@ -705,6 +725,7 @@ onBeforeUnmount(() => {
                         </div>
                     </form>
                 </Dialog>
+                <ProblemTestCaseDialog v-model:visible="testCaseDialogVisible" :problem="activeProblemForTestCase" @saved="handleTestCaseSaved" />
             </div>
         </div>
     </div>
