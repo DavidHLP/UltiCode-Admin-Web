@@ -77,6 +77,13 @@ export const fetchProblem = async (payload: QueryProblemPayload = {}): Promise<P
     });
 };
 
+export const fetchProblemDetail = async (problemId: number | string): Promise<Problem> => {
+    return requestData<Problem>({
+        url: `/problems/api/management/problem/${problemId}`,
+        method: 'get'
+    });
+};
+
 export const createProblem = async (payload: UpsertProblemPayload): Promise<Problem> => {
     return requestData<Problem>({
         url: '/problems/api/management/problem',

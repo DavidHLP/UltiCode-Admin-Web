@@ -2,8 +2,8 @@
 import { CategoryType, CategoryTypeLabel, ProblemDifficulty, ProblemType, createProblem, deleteProblem, fetchProblem, updateProblem, type Problem, type QueryProblemPayload, type UpsertProblemPayload } from '@/api/problem';
 import { emitErrorToast, emitSuccessToast } from '@/utils/toast';
 import { useConfirm } from 'primevue/useconfirm';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import ProblemTestCaseDialog from './ProblemTestCaseDialog.vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 interface StatusOption<T> {
     label: string;
@@ -70,6 +70,9 @@ const problemTypeOptions: StatusOption<ProblemType>[] = [
 ];
 
 const confirm = useConfirm();
+const router = useRouter();
+
+const expandedRows = ref<Problem[]>([]);
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let requestToken = 0;
@@ -89,15 +92,6 @@ const formErrors = reactive<{
 
 const dialogTitle = computed(() => (dialogMode.value === 'create' ? '新建题目' : '编辑题目'));
 const isEditMode = computed(() => dialogMode.value === 'edit');
-
-const testCaseDialogVisible = ref(false);
-const activeProblemForTestCase = ref<Problem | null>(null);
-
-watch(testCaseDialogVisible, (visible) => {
-    if (!visible) {
-        activeProblemForTestCase.value = null;
-    }
-});
 
 async function loadProblems(paramsOverride: Partial<QueryProblemPayload> = {}, options: LoadProblemOptions = {}) {
     const { silent = false } = options;
@@ -129,6 +123,7 @@ async function loadProblems(paramsOverride: Partial<QueryProblemPayload> = {}, o
 
         const normalizedRecords = normalizePageRecords(data);
         problems.value = normalizedRecords.length > 0 ? normalizedRecords : (data.records ?? []);
+        expandedRows.value = [];
 
         const normalizedTotal = extractNumericField(data, ['total', 'count', 'length'], problems.value.length);
         totalRecords.value = normalizedTotal;
@@ -261,10 +256,6 @@ function refresh() {
     loadProblems({}, { silent: true });
 }
 
-function handleTestCaseSaved() {
-    refresh();
-}
-
 function clearFilters() {
     keyword.value = '';
     selectedDifficulty.value = null;
@@ -326,9 +317,12 @@ function openEditDialog(record: Problem) {
     dialogVisible.value = true;
 }
 
-function openTestCaseDialog(record: Problem) {
-    activeProblemForTestCase.value = record;
-    testCaseDialogVisible.value = true;
+function openTestCasePage(record: Problem) {
+    if (!record.id) {
+        emitErrorToast('缺少题目信息，无法查看测试用例');
+        return;
+    }
+    router.push({ name: 'adminProblemTestcases', params: { problemId: record.id } });
 }
 
 function onDialogHide() {
@@ -526,6 +520,7 @@ onBeforeUnmount(() => {
                 <ConfirmDialog />
                 <div class="font-semibold text-xl mb-4">题目列表</div>
                 <DataTable
+                    v-model:expandedRows="expandedRows"
                     :value="problems"
                     dataKey="id"
                     :loading="loading"
@@ -562,6 +557,8 @@ onBeforeUnmount(() => {
                     <template #empty> 暂无题目数据 </template>
                     <template #loading> 正在加载题目，请稍候… </template>
 
+                    <Column expander style="width: 3.5rem" />
+
                     <Column field="id" header="ID" style="width: 6rem" sortable>
                         <template #body="{ data }">
                             <span class="font-medium text-sm">{{ data.id }}</span>
@@ -595,18 +592,6 @@ onBeforeUnmount(() => {
                         </template>
                     </Column>
 
-                    <Column field="tags" header="标签" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            <span>{{ formatTags(data.tags) }}</span>
-                        </template>
-                    </Column>
-
-                    <Column header="提交统计" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            <span>{{ formatSubmissionRate(data) }}</span>
-                        </template>
-                    </Column>
-
                     <Column field="isVisible" header="可见性" style="width: 7rem">
                         <template #body="{ data }">
                             <Tag :value="resolveVisibilityMeta(data.isVisible).label" :severity="resolveVisibilityMeta(data.isVisible).severity" rounded />
@@ -628,12 +613,40 @@ onBeforeUnmount(() => {
                     <Column header="操作" style="width: 14rem" bodyClass="text-right">
                         <template #body="{ data }">
                             <div class="flex justify-end gap-2">
-                                <Button icon="pi pi-list" label="测试用例" severity="info" text size="small" @click="openTestCaseDialog(data)" />
+                                <Button icon="pi pi-list" label="测试用例" severity="info" text size="small" @click="openTestCasePage(data)" />
                                 <Button icon="pi pi-pencil" label="编辑" severity="secondary" text size="small" @click="openEditDialog(data)" />
                                 <Button icon="pi pi-trash" label="删除" severity="danger" text size="small" @click="confirmDeleteProblem(data)" />
                             </div>
                         </template>
                     </Column>
+
+                    <template #expansion="{ data }">
+                        <div class="expansion-panel">
+                            <div class="expansion-section">
+                                <span class="expansion-title">题目简介</span>
+                                <p class="expansion-description">{{ data.description || '暂无题目描述' }}</p>
+                            </div>
+
+                            <div class="expansion-grid">
+                                <div class="expansion-item">
+                                    <span class="expansion-label">标签</span>
+                                    <span class="expansion-value">{{ formatTags(data.tags) }}</span>
+                                </div>
+                                <div class="expansion-item">
+                                    <span class="expansion-label">提交情况</span>
+                                    <span class="expansion-value">{{ formatSubmissionRate(data) }}</span>
+                                </div>
+                                <div class="expansion-item">
+                                    <span class="expansion-label">创建时间</span>
+                                    <span class="expansion-value">{{ formatDate(data.createdAt) }}</span>
+                                </div>
+                                <div class="expansion-item">
+                                    <span class="expansion-label">最近更新</span>
+                                    <span class="expansion-value">{{ formatDate(data.updatedAt) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
 
                     <template #footer>
                         <div class="flex flex-wrap justify-between gap-2 text-sm text-color-secondary">
@@ -725,7 +738,6 @@ onBeforeUnmount(() => {
                         </div>
                     </form>
                 </Dialog>
-                <ProblemTestCaseDialog v-model:visible="testCaseDialogVisible" :problem="activeProblemForTestCase" @saved="handleTestCaseSaved" />
             </div>
         </div>
     </div>
@@ -734,5 +746,60 @@ onBeforeUnmount(() => {
 <style scoped>
 .text-color-secondary {
     color: var(--text-color-secondary);
+}
+
+.expansion-panel {
+    border: 1px solid var(--surface-border);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    background: var(--surface-section);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.expansion-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.expansion-title {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.expansion-description {
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.expansion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.expansion-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.75rem;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--border-radius);
+    background: var(--surface-card);
+}
+
+.expansion-label {
+    font-size: 0.75rem;
+    color: var(--text-color-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.expansion-value {
+    font-size: 0.95rem;
 }
 </style>

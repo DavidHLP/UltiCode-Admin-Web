@@ -117,6 +117,11 @@ const routes: RouteRecordRaw[] = [
                 path: '/admin/problems',
                 name: 'adminProblems',
                 component: () => import('@/views/pages/problem/ProblemView.vue')
+            },
+            {
+                path: '/admin/problems/:problemId/testcases',
+                name: 'adminProblemTestcases',
+                component: () => import('@/views/pages/problem/ProblemTestCaseDialog.vue')
             }
         ]
     },
