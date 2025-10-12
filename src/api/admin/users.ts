@@ -37,7 +37,7 @@ export interface UpsertUserPayload {
 
 export function fetchUsers(params: QueryUsersPayload = {}) {
     return requestData<Page<UserRecord>>({
-        url: '/user/api/user/page',
+        url: '/api/user/user/page',
         method: 'get',
         params
     });
@@ -45,7 +45,7 @@ export function fetchUsers(params: QueryUsersPayload = {}) {
 
 export function createUser(payload: UpsertUserPayload) {
     return requestData<UserRecord>({
-        url: '/user/api/user',
+        url: '/api/user/user',
         method: 'post',
         data: payload
     });
@@ -53,7 +53,7 @@ export function createUser(payload: UpsertUserPayload) {
 
 export function updateUser(userId: number | string, payload: UpsertUserPayload) {
     return requestData<UserRecord>({
-        url: `/user/api/user/${userId}`,
+        url: `/api/user/user/${userId}`,
         method: 'put',
         data: payload
     });
@@ -61,7 +61,7 @@ export function updateUser(userId: number | string, payload: UpsertUserPayload) 
 
 export function deleteUser(userId: number | string) {
     return requestData<void>({
-        url: `/user/api/user/${userId}`,
+        url: `/api/user/user/${userId}`,
         method: 'delete'
     });
 }

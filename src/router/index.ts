@@ -17,6 +17,18 @@ const routes: RouteRecordRaw[] = [
                 }
             },
             {
+                path: '/admin/problems',
+                name: 'problems',
+                component: () => import('@/views/pages/problem/ProblemList.vue'),
+                meta: { breadcrumb: [{ label: '题目管理' }] }
+            },
+            {
+                path: '/admin/problems/:id',
+                name: 'problemDetail',
+                component: () => import('@/views/pages/problem/ProblemDetail.vue'),
+                meta: { breadcrumb: [{ label: '题目详情' }] }
+            },
+            {
                 path: '/uikit/formlayout',
                 name: 'formlayout',
                 component: () => import('@/views/uikit/FormLayout.vue')

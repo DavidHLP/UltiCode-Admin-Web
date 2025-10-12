@@ -38,7 +38,7 @@ export interface ForgotPasswordResponse {
 
 export function login(data: LoginPayload) {
     return requestData<LoginResponse>({
-        url: '/auth/api/login',
+        url: '/api/auth/login',
         method: 'post',
         data
     });
@@ -46,7 +46,7 @@ export function login(data: LoginPayload) {
 
 export function logout(data: LogoutPayload) {
     return requestData<void>({
-        url: '/auth/api/logout',
+        url: '/api/auth/logout',
         method: 'post',
         data
     });
@@ -54,14 +54,14 @@ export function logout(data: LogoutPayload) {
 
 export function getUserInfo() {
     return requestData<UserInfo>({
-        url: '/auth/api/me',
+        url: '/api/auth/me',
         method: 'get'
     });
 }
 
 export function requestPasswordReset(data: ForgotPasswordPayload) {
     return requestData<ForgotPasswordResponse>({
-        url: '/auth/api/forgot-password',
+        url: '/api/auth/forgot-password',
         method: 'post',
         data
     });

@@ -25,14 +25,14 @@ export interface UpsertRolePayload {
 
 export const getRoleList = async (): Promise<Role[]> => {
     return requestData<Role[]>({
-        url: '/user/api/role/list',
+        url: '/api/user/role/list',
         method: 'get'
     });
 };
 
 export const fetchRoles = async (params: QueryRolesPayload = {}): Promise<Page<Role>> => {
     return requestData<Page<Role>>({
-        url: '/user/api/role/page',
+        url: '/api/user/role/page',
         method: 'get',
         params
     });
@@ -40,7 +40,7 @@ export const fetchRoles = async (params: QueryRolesPayload = {}): Promise<Page<R
 
 export const createRole = async (payload: UpsertRolePayload): Promise<Role> => {
     return requestData<Role>({
-        url: '/user/api/role',
+        url: '/api/user/role',
         method: 'post',
         data: payload
     });
@@ -48,7 +48,7 @@ export const createRole = async (payload: UpsertRolePayload): Promise<Role> => {
 
 export const updateRole = async (roleId: number | string, payload: UpsertRolePayload): Promise<Role> => {
     return requestData<Role>({
-        url: `/user/api/role/${roleId}`,
+        url: `/api/user/role/${roleId}`,
         method: 'put',
         data: payload
     });
@@ -56,7 +56,7 @@ export const updateRole = async (roleId: number | string, payload: UpsertRolePay
 
 export const deleteRole = async (roleId: number | string): Promise<void> => {
     return requestData<void>({
-        url: `/user/api/role/${roleId}`,
+        url: `/api/user/role/${roleId}`,
         method: 'delete'
     });
 };

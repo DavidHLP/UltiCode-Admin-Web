@@ -29,19 +29,7 @@ export default defineConfig(async () => {
         },
         server: {
             proxy: {
-                '/user/api': {
-                    target: 'http://localhost:9999',
-                    changeOrigin: true
-                },
-                '/auth/api': {
-                    target: 'http://localhost:9999',
-                    changeOrigin: true
-                },
-                '/problems/api': {
-                    target: 'http://localhost:9999',
-                    changeOrigin: true
-                },
-                '/solutions/api/management': {
+                '/api/': {
                     target: 'http://localhost:9999',
                     changeOrigin: true
                 }
