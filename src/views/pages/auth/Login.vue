@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LoginPayload } from '@/api/auth';
+import type { LoginPayload } from '@/api/auth/auth';
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';

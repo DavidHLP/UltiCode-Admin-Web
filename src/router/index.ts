@@ -11,7 +11,10 @@ const routes: RouteRecordRaw[] = [
             {
                 path: '/',
                 name: 'dashboard',
-                component: () => import('@/views/Dashboard.vue')
+                component: () => import('@/views/Dashboard.vue'),
+                meta: {
+                    breadcrumb: [{ label: '仪表盘' }]
+                }
             },
             {
                 path: '/uikit/formlayout',
@@ -106,22 +109,18 @@ const routes: RouteRecordRaw[] = [
             {
                 path: '/admin/users',
                 name: 'adminUsers',
-                component: () => import('@/views/pages/admin/UserView.vue')
+                component: () => import('@/views/pages/admin/UserView.vue'),
+                meta: {
+                    breadcrumb: [{ label: '用户管理' }]
+                }
             },
             {
                 path: '/admin/roles',
                 name: 'adminRoles',
-                component: () => import('@/views/pages/admin/RoleView.vue')
-            },
-            {
-                path: '/admin/problems',
-                name: 'adminProblems',
-                component: () => import('@/views/pages/problem/ProblemView.vue')
-            },
-            {
-                path: '/admin/problems/:problemId/testcases',
-                name: 'adminProblemTestcases',
-                component: () => import('@/views/pages/problem/ProblemTestCaseDialog.vue')
+                component: () => import('@/views/pages/admin/RoleView.vue'),
+                meta: {
+                    breadcrumb: [{ label: '角色管理' }]
+                }
             }
         ]
     },

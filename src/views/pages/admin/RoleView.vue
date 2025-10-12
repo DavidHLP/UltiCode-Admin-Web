@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { createRole, deleteRole, fetchRoles, updateRole, type QueryRolesPayload, type Role, type UpsertRolePayload } from '@/api/role';
+import { createRole, deleteRole, fetchRoles, updateRole, type QueryRolesPayload, type Role, type UpsertRolePayload } from '@/api/admin/role';
 import { emitErrorToast, emitSuccessToast } from '@/utils/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';

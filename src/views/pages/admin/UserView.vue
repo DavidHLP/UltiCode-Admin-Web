@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { getRoleList, type Role } from '@/api/role';
-import { createUser, deleteUser, fetchUsers, updateUser, type QueryUsersPayload, type UpsertUserPayload, type UserRecord } from '@/api/users';
+import { getRoleList, type Role } from '@/api/admin/role';
+import { createUser, deleteUser, fetchUsers, updateUser, type QueryUsersPayload, type UpsertUserPayload, type UserRecord } from '@/api/admin/users';
 import { emitErrorToast, emitSuccessToast } from '@/utils/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';

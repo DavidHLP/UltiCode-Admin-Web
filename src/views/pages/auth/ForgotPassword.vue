@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { requestPasswordReset, type ForgotPasswordPayload } from '@/api/auth'
+import { requestPasswordReset, type ForgotPasswordPayload } from '@/api/auth/auth'
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue'
 import { useToast } from 'primevue/usetoast'
 import { reactive, ref, watch } from 'vue'

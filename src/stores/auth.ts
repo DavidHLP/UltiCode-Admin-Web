@@ -1,5 +1,5 @@
-import type { LoginPayload, LoginResponse, LogoutPayload, UserInfo } from '@/api/auth'
-import * as authApi from '@/api/auth'
+import type { LoginPayload, LoginResponse, LogoutPayload, UserInfo } from '@/api/auth/auth'
+import * as authApi from '@/api/auth/auth'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
