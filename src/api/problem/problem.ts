@@ -1,8 +1,9 @@
-import { requestData } from '@/utils/request';
+import {requestData} from '@/utils/request';
 
 export interface PageReq {
     current?: number;
     size?: number;
+
     [key: string]: any;
 }
 
@@ -60,11 +61,13 @@ export interface Tag {
     slug: string;
     name: string;
 }
+
 export interface Category {
     id: number;
     code: string;
     name: string;
 }
+
 export interface Difficulty {
     id: number;
     code: string;
@@ -78,6 +81,7 @@ export interface TestcaseGroup {
     isSample?: boolean;
     weight?: number;
 }
+
 export interface Testcase {
     id?: number;
     groupId: number;
@@ -87,6 +91,7 @@ export interface Testcase {
     outputType?: string;
     score?: number;
 }
+
 export interface TestcaseStep {
     id?: number;
     testcaseId: number;
@@ -107,124 +112,124 @@ export interface AdminProblemDetailDto {
 
 // Problem CRUD
 export function listProblems(params: PageReq) {
-    return requestData<PageResp<Problem>>({ url: '/api/problems', method: 'get', params });
+    return requestData<PageResp<Problem>>({url: '/api/problems', method: 'get', params});
 }
 
 export function getProblem(id: number) {
-    return requestData<Problem>({ url: `/api/problems/${id}`, method: 'get' });
+    return requestData<Problem>({url: `/api/problems/${id}`, method: 'get'});
 }
 
 export function createProblem(data: Problem) {
-    return requestData<boolean>({ url: '/api/problems', method: 'post', data });
+    return requestData<boolean>({url: '/api/problems', method: 'post', data});
 }
 
 export function updateProblem(id: number, data: Problem) {
-    return requestData<boolean>({ url: `/api/problems/${id}`, method: 'put', data });
+    return requestData<boolean>({url: `/api/problems/${id}`, method: 'put', data});
 }
 
 export function deleteProblem(id: number) {
-    return requestData<boolean>({ url: `/api/problems/${id}`, method: 'delete' });
+    return requestData<boolean>({url: `/api/problems/${id}`, method: 'delete'});
 }
 
 export function getAdminProblemDetail(id: number) {
-    return requestData<AdminProblemDetailDto>({ url: `/api/problems/${id}/admin-detail`, method: 'get' });
+    return requestData<AdminProblemDetailDto>({url: `/api/problems/${id}/admin-detail`, method: 'get'});
 }
 
 // Tags
 export function getProblemTags(id: number) {
-    return requestData<number[]>({ url: `/api/problems/${id}/tags`, method: 'get' });
+    return requestData<number[]>({url: `/api/problems/${id}/tags`, method: 'get'});
 }
 
 export function updateProblemTags(id: number, tagIds: number[]) {
-    return requestData<boolean>({ url: `/api/problems/${id}/tags`, method: 'put', data: tagIds });
+    return requestData<boolean>({url: `/api/problems/${id}/tags`, method: 'put', data: tagIds});
 }
 
 export function listAllTags() {
-    return requestData<Tag[]>({ url: '/api/tags/list', method: 'get' });
+    return requestData<Tag[]>({url: '/api/tags/list', method: 'get'});
 }
 
 // Locales
 export function listLocalesByProblem(problemId: number) {
-    return requestData<ProblemLocale[]>({ url: `/api/problems/${problemId}/locales`, method: 'get' });
+    return requestData<ProblemLocale[]>({url: `/api/problems/${problemId}/locales`, method: 'get'});
 }
 
 export function createLocale(data: ProblemLocale) {
-    return requestData<boolean>({ url: '/api/problem-locales', method: 'post', data });
+    return requestData<boolean>({url: '/api/problem-locales', method: 'post', data});
 }
 
 export function updateLocale(id: number, data: ProblemLocale) {
-    return requestData<boolean>({ url: `/api/problem-locales/${id}`, method: 'put', data });
+    return requestData<boolean>({url: `/api/problem-locales/${id}`, method: 'put', data});
 }
 
 export function deleteLocale(id: number) {
-    return requestData<boolean>({ url: `/api/problem-locales/${id}`, method: 'delete' });
+    return requestData<boolean>({url: `/api/problem-locales/${id}`, method: 'delete'});
 }
 
 // Language configs
 export function listLangConfigsByProblem(problemId: number) {
-    return requestData<ProblemLanguageConfig[]>({ url: `/api/problems/${problemId}/language-configs`, method: 'get' });
+    return requestData<ProblemLanguageConfig[]>({url: `/api/problems/${problemId}/language-configs`, method: 'get'});
 }
 
 export function createLangConfig(data: ProblemLanguageConfig) {
-    return requestData<boolean>({ url: '/api/problem-language-configs', method: 'post', data });
+    return requestData<boolean>({url: '/api/problem-language-configs', method: 'post', data});
 }
 
 export function updateLangConfig(id: number, data: ProblemLanguageConfig) {
-    return requestData<boolean>({ url: `/api/problem-language-configs/${id}`, method: 'put', data });
+    return requestData<boolean>({url: `/api/problem-language-configs/${id}`, method: 'put', data});
 }
 
 export function deleteLangConfig(id: number) {
-    return requestData<boolean>({ url: `/api/problem-language-configs/${id}`, method: 'delete' });
+    return requestData<boolean>({url: `/api/problem-language-configs/${id}`, method: 'delete'});
 }
 
 // Testcase groups
 export function listGroupsByProblem(problemId: number) {
-    return requestData<TestcaseGroup[]>({ url: `/api/problems/${problemId}/testcase-groups`, method: 'get' });
+    return requestData<TestcaseGroup[]>({url: `/api/problems/${problemId}/testcase-groups`, method: 'get'});
 }
 
 export function createGroup(data: TestcaseGroup) {
-    return requestData<boolean>({ url: '/api/testcase-groups', method: 'post', data });
+    return requestData<boolean>({url: '/api/testcase-groups', method: 'post', data});
 }
 
 export function updateGroup(id: number, data: TestcaseGroup) {
-    return requestData<boolean>({ url: `/api/testcase-groups/${id}`, method: 'put', data });
+    return requestData<boolean>({url: `/api/testcase-groups/${id}`, method: 'put', data});
 }
 
 export function deleteGroup(id: number) {
-    return requestData<boolean>({ url: `/api/testcase-groups/${id}`, method: 'delete' });
+    return requestData<boolean>({url: `/api/testcase-groups/${id}`, method: 'delete'});
 }
 
 // Testcases
 export function createTestcase(data: Testcase) {
-    return requestData<boolean>({ url: '/api/testcases', method: 'post', data });
+    return requestData<boolean>({url: '/api/testcases', method: 'post', data});
 }
 
 export function updateTestcase(id: number, data: Testcase) {
-    return requestData<boolean>({ url: `/api/testcases/${id}`, method: 'put', data });
+    return requestData<boolean>({url: `/api/testcases/${id}`, method: 'put', data});
 }
 
 export function deleteTestcase(id: number) {
-    return requestData<boolean>({ url: `/api/testcases/${id}`, method: 'delete' });
+    return requestData<boolean>({url: `/api/testcases/${id}`, method: 'delete'});
 }
 
 // Steps
 export function createStep(data: TestcaseStep) {
-    return requestData<boolean>({ url: '/api/testcase-steps', method: 'post', data });
+    return requestData<boolean>({url: '/api/testcase-steps', method: 'post', data});
 }
 
 export function updateStep(id: number, data: TestcaseStep) {
-    return requestData<boolean>({ url: `/api/testcase-steps/${id}`, method: 'put', data });
+    return requestData<boolean>({url: `/api/testcase-steps/${id}`, method: 'put', data});
 }
 
 export function deleteStep(id: number) {
-    return requestData<boolean>({ url: `/api/testcase-steps/${id}`, method: 'delete' });
+    return requestData<boolean>({url: `/api/testcase-steps/${id}`, method: 'delete'});
 }
 
 // Dictionaries
-export function pageDifficulties(params: PageReq = { current: 1, size: 100 }) {
-    return requestData<PageResp<Difficulty>>({ url: '/api/difficulties', method: 'get', params });
+export function pageDifficulties(params: PageReq = {current: 1, size: 100}) {
+    return requestData<PageResp<Difficulty>>({url: '/api/difficulties', method: 'get', params});
 }
 
-export function pageCategories(params: PageReq = { current: 1, size: 100 }) {
-    return requestData<PageResp<Category>>({ url: '/api/categories', method: 'get', params });
+export function pageCategories(params: PageReq = {current: 1, size: 100}) {
+    return requestData<PageResp<Category>>({url: '/api/categories', method: 'get', params});
 }
