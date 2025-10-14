@@ -1,4 +1,5 @@
-import { computed, ComputedRef, reactive } from 'vue';
+import { computed, reactive } from 'vue';
+import type { ComputedRef } from 'vue';
 
 interface LayoutConfig {
     preset: string;
