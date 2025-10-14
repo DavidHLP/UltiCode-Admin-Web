@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
-import {useToast} from 'primevue/usetoast';
-import {onMounted, reactive, ref, watch} from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { useToast } from 'primevue/usetoast';
+import { onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const toast = useToast();
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
 
 const email = ref<string>('');
 const password = ref<string>('');
@@ -53,6 +58,16 @@ function validate(): boolean {
     return valid;
 }
 
+function extractErrorMessage(error: unknown): string {
+    if (typeof error === 'object' && error !== null && 'message' in error) {
+        const message = (error as { message?: unknown }).message;
+        if (typeof message === 'string' && message.trim()) {
+            return message;
+        }
+    }
+    return '登录失败，请稍后重试';
+}
+
 async function onSubmit(): Promise<void> {
     if (!validate()) {
         return;
@@ -67,22 +82,30 @@ async function onSubmit(): Promise<void> {
     }
 
     isLoading.value = true;
-
-    console.log('Login attempt with:', {
-        email: email.value,
-        password: password.value,
-        rememberMe: checked.value
-    });
-
-    setTimeout(() => {
+    try {
+        await authStore.login({
+            identifier: email.value.trim(),
+            password: password.value
+        });
         toast.add({
             severity: 'success',
             summary: '登录成功',
-            detail: '已成功提交登录信息！',
+            detail: '欢迎回来！',
             life: 2000
         });
+        const redirect = (route.query.redirect as string) || '/';
+        await router.replace(redirect);
+    } catch (error) {
+        const message = extractErrorMessage(error);
+        toast.add({
+            severity: 'error',
+            summary: '登录失败',
+            detail: message,
+            life: 3000
+        });
+    } finally {
         isLoading.value = false;
-    }, 1500);
+    }
 }
 </script>
 

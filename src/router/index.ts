@@ -1,32 +1,20 @@
 import AppLayout from '@/layout/AppLayout.vue';
-import { useAuthStore } from '@/stores/auth';
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import {useAuthStore} from '@/stores/auth';
+import {createRouter, createWebHistory, type RouteRecordRaw} from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
     {
         path: '/',
         component: AppLayout,
-        meta: { requiresAuth: true },
+        meta: {requiresAuth: true},
         children: [
             {
                 path: '/',
                 name: 'dashboard',
                 component: () => import('@/views/Dashboard.vue'),
                 meta: {
-                    breadcrumb: [{ label: '仪表盘' }]
+                    breadcrumb: [{label: '仪表盘'}]
                 }
-            },
-            {
-                path: '/admin/problems',
-                name: 'problems',
-                component: () => import('@/views/pages/problem/ProblemList.vue'),
-                meta: { breadcrumb: [{ label: '题目管理' }] }
-            },
-            {
-                path: '/admin/problems/:id',
-                name: 'problemDetail',
-                component: () => import('@/views/pages/problem/ProblemDetail.vue'),
-                meta: { breadcrumb: [{ label: '题目详情' }] }
             },
             {
                 path: '/uikit/formlayout',
@@ -117,22 +105,6 @@ const routes: RouteRecordRaw[] = [
                 path: '/documentation',
                 name: 'documentation',
                 component: () => import('@/views/pages/Documentation.vue')
-            },
-            {
-                path: '/admin/users',
-                name: 'adminUsers',
-                component: () => import('@/views/pages/admin/UserView.vue'),
-                meta: {
-                    breadcrumb: [{ label: '用户管理' }]
-                }
-            },
-            {
-                path: '/admin/roles',
-                name: 'adminRoles',
-                component: () => import('@/views/pages/admin/RoleView.vue'),
-                meta: {
-                    breadcrumb: [{ label: '角色管理' }]
-                }
             }
         ]
     },
@@ -154,7 +126,12 @@ const routes: RouteRecordRaw[] = [
     {
         path: '/auth/forgot-password',
         name: 'forgotPassword',
-        component: () => import('@/views/pages/auth/ForgotPassword.vue')
+        component: () => import('@/views/pages/auth/Forget.vue')
+    },
+    {
+        path: '/auth/register',
+        name: 'register',
+        component: () => import('@/views/pages/auth/Register.vue')
     },
     {
         path: '/auth/access',
@@ -178,12 +155,12 @@ router.beforeEach((to, _from, next) => {
     const isAuthenticated = authStore.isAuthenticated;
 
     if (to.meta.requiresAuth && !isAuthenticated) {
-        next({ name: 'login', query: { redirect: to.fullPath } });
+        next({name: 'login', query: {redirect: to.fullPath}});
         return;
     }
 
     if (to.name === 'login' && isAuthenticated) {
-        next({ name: 'dashboard' });
+        next({name: 'dashboard'});
         return;
     }
 
