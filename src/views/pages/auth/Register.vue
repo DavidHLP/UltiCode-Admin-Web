@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue'
+import { requestRegistrationCode } from '@/api/auth/auth'
 import {useAuthStore} from '@/stores/auth'
 import {useToast} from 'primevue/usetoast'
-import {computed, reactive, ref, watch} from 'vue'
+import {computed, onBeforeUnmount, reactive, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
 const toast = useToast()
@@ -15,6 +16,7 @@ const form = reactive({
     email: '',
     password: '',
     confirmPassword: '',
+    verificationCode: '',
     agree: false,
 })
 
@@ -23,14 +25,36 @@ const errors = reactive({
     email: '',
     password: '',
     confirmPassword: '',
+    verificationCode: '',
     agree: '',
 })
 
 const isSubmitting = ref(false)
+const isSendingCode = ref(false)
+const codeCountdown = ref(0)
+let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 const passwordStrengthHint = computed(() => '密码至少需要 6 个字符，并包含大小写字母与数字的组合。')
 
 const emailPattern = /^(?:[a-zA-Z0-9._%+-]+)@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/
+const verificationCodePattern = /^\d{6}$/
+
+const isCodeButtonDisabled = computed(() => {
+    if (isSubmitting.value || isSendingCode.value) {
+        return true
+    }
+    if (codeCountdown.value > 0) {
+        return true
+    }
+    return !emailPattern.test(form.email.trim())
+})
+
+const codeButtonLabel = computed(() => {
+    if (codeCountdown.value > 0) {
+        return `重新发送 (${codeCountdown.value}s)`
+    }
+    return '获取验证码'
+})
 
 watch(
     () => form.username,
@@ -43,9 +67,20 @@ watch(
 
 watch(
     () => form.email,
-    (value) => {
+    (value, oldValue) => {
         if (errors.email && value.trim()) {
             errors.email = ''
+        }
+        if (errors.verificationCode && form.verificationCode.trim()) {
+            errors.verificationCode = ''
+        }
+        if (value !== oldValue) {
+            form.verificationCode = ''
+            if (countdownTimer) {
+                clearInterval(countdownTimer)
+                countdownTimer = null
+            }
+            codeCountdown.value = 0
         }
     },
 )
@@ -58,6 +93,15 @@ watch(
         }
         if (errors.confirmPassword && form.confirmPassword && form.confirmPassword === value) {
             errors.confirmPassword = ''
+        }
+    },
+)
+
+watch(
+    () => form.verificationCode,
+    (value) => {
+        if (errors.verificationCode && value.trim()) {
+            errors.verificationCode = ''
         }
     },
 )
@@ -121,6 +165,15 @@ function validate(): boolean {
         valid = false
     }
 
+    const code = form.verificationCode.trim()
+    if (!code) {
+        errors.verificationCode = '请输入邮箱验证码'
+        valid = false
+    } else if (!verificationCodePattern.test(code)) {
+        errors.verificationCode = '验证码必须为 6 位数字'
+        valid = false
+    }
+
     if (!form.agree) {
         errors.agree = '请先阅读并同意服务条款'
         valid = false
@@ -129,15 +182,71 @@ function validate(): boolean {
     return valid
 }
 
-function extractErrorMessage(error: unknown): string {
+function extractErrorMessage(error: unknown, fallback = '注册失败，请稍后重试'): string {
     if (typeof error === 'object' && error !== null && 'message' in error) {
         const message = (error as { message?: unknown }).message
         if (typeof message === 'string' && message.trim()) {
             return message
         }
     }
-    return '注册失败，请稍后重试'
+    return fallback
 }
+
+function startCountdown(seconds: number) {
+    if (countdownTimer) {
+        clearInterval(countdownTimer)
+        countdownTimer = null
+    }
+    codeCountdown.value = seconds
+    countdownTimer = setInterval(() => {
+        codeCountdown.value -= 1
+        if (codeCountdown.value <= 0) {
+            codeCountdown.value = 0
+            if (countdownTimer) {
+                clearInterval(countdownTimer)
+                countdownTimer = null
+            }
+        }
+    }, 1000)
+}
+
+async function sendVerificationCode(): Promise<void> {
+    if (codeCountdown.value > 0 || isSendingCode.value) {
+        return
+    }
+    const email = form.email.trim()
+    if (!email) {
+        errors.email = '邮箱不能为空'
+        return
+    }
+    if (!emailPattern.test(email)) {
+        errors.email = '请输入有效的邮箱地址'
+        return
+    }
+    isSendingCode.value = true
+    try {
+        await requestRegistrationCode({email})
+        toast.add({
+            severity: 'success',
+            summary: '验证码已发送',
+            detail: '请前往邮箱查收验证码',
+            life: 2500,
+        })
+        startCountdown(60)
+    } catch (error) {
+        const message = extractErrorMessage(error, '发送验证码失败，请稍后重试')
+        toast.add({severity: 'error', summary: '发送失败', detail: message, life: 3000})
+    } finally {
+        isSendingCode.value = false
+    }
+}
+
+onBeforeUnmount(() => {
+    if (countdownTimer) {
+        clearInterval(countdownTimer)
+        countdownTimer = null
+    }
+})
 
 async function onSubmit(): Promise<void> {
     if (!validate()) {
@@ -150,6 +259,7 @@ async function onSubmit(): Promise<void> {
             username: form.username.trim(),
             email: form.email.trim(),
             password: form.password,
+            verificationCode: form.verificationCode.trim(),
         })
         toast.add({
             severity: 'success',
@@ -205,17 +315,49 @@ async function onSubmit(): Promise<void> {
                         <div>
                             <label for="email"
                                    class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">邮箱</label>
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <InputText
+                                    id="email"
+                                    v-model="form.email"
+                                    type="email"
+                                    placeholder="请输入邮箱"
+                                    class="w-full md:w-[24rem] flex-1"
+                                    :invalid="!!errors.email"
+                                    autocomplete="email"
+                                    :disabled="isSubmitting"
+                                />
+                                <Button
+                                    type="button"
+                                    :label="codeButtonLabel"
+                                    class="w-full sm:w-auto whitespace-nowrap"
+                                    :disabled="isCodeButtonDisabled"
+                                    :loading="isSendingCode"
+                                    @click="sendVerificationCode"
+                                />
+                            </div>
+                            <InlineMessage v-if="errors.email" severity="error">{{ errors.email }}</InlineMessage>
+                        </div>
+
+                        <div>
+                            <label for="verificationCode"
+                                   class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">
+                                邮箱验证码
+                            </label>
                             <InputText
-                                id="email"
-                                v-model="form.email"
-                                type="email"
-                                placeholder="请输入邮箱"
+                                id="verificationCode"
+                                v-model="form.verificationCode"
+                                type="text"
+                                placeholder="请输入 6 位验证码"
                                 class="w-full md:w-[30rem]"
-                                :invalid="!!errors.email"
-                                autocomplete="email"
+                                :invalid="!!errors.verificationCode"
+                                autocomplete="one-time-code"
+                                maxlength="6"
                                 :disabled="isSubmitting"
                             />
-                            <InlineMessage v-if="errors.email" severity="error">{{ errors.email }}</InlineMessage>
+                            <InlineMessage v-if="errors.verificationCode" severity="error">{{
+                                    errors.verificationCode
+                                }}
+                            </InlineMessage>
                         </div>
 
                         <div>

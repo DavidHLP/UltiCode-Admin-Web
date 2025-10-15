@@ -121,17 +121,20 @@ const routes: RouteRecordRaw[] = [
     {
         path: '/auth/login',
         name: 'login',
-        component: () => import('@/views/pages/auth/Login.vue')
+        component: () => import('@/views/pages/auth/Login.vue'),
+        meta: {guestOnly: true}
     },
     {
         path: '/auth/forgot-password',
         name: 'forgotPassword',
-        component: () => import('@/views/pages/auth/Forget.vue')
+        component: () => import('@/views/pages/auth/Forget.vue'),
+        meta: {guestOnly: true}
     },
     {
         path: '/auth/register',
         name: 'register',
-        component: () => import('@/views/pages/auth/Register.vue')
+        component: () => import('@/views/pages/auth/Register.vue'),
+        meta: {guestOnly: true}
     },
     {
         path: '/auth/access',
@@ -159,7 +162,7 @@ router.beforeEach((to, _from, next) => {
         return;
     }
 
-    if (to.name === 'login' && isAuthenticated) {
+    if (to.meta.guestOnly && isAuthenticated) {
         next({name: 'dashboard'});
         return;
     }

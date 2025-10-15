@@ -191,6 +191,15 @@ async function onSubmit(): Promise<void> {
                         </div>
                         <Button type="submit" label="登录" class="w-full" :loading="isLoading"
                                 :disabled="isLoading"></Button>
+                        <div class="text-center mt-6 text-sm text-muted-color">
+                            <span>还没有账号？</span>
+                            <RouterLink
+                                to="/auth/register"
+                                class="font-medium text-primary cursor-pointer no-underline hover:underline ml-1"
+                            >
+                                立即注册
+                            </RouterLink>
+                        </div>
                     </form>
                 </div>
             </div>
