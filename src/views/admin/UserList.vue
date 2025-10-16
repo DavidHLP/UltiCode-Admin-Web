@@ -298,44 +298,43 @@ function formatDate(value?: string | null) {
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block" for="username">用户名</label>
-                    <InputText id="username" v-model="form.username" placeholder="请输入用户名" autofocus />
+                    <InputText id="username" v-model="form.username" placeholder="请输入用户名" autofocus class="w-full" />
                 </div>
             </div>
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block" for="email">邮箱</label>
-                    <InputText id="email" v-model="form.email" placeholder="请输入邮箱" />
+                    <InputText id="email" v-model="form.email" placeholder="请输入邮箱" class="w-full" />
                 </div>
             </div>
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block" for="password">密码</label>
-                    <Password id="password" v-model="form.password" toggleMask :feedback="false" :placeholder="editingId === null ? '请输入初始密码' : '留空则不修改密码'" />
-                    <small v-if="editingId !== null" class="text-color-secondary">留空保留原密码</small>
+                    <Password id="password" v-model="form.password" toggleMask :feedback="false" :placeholder="editingId === null ? '请输入初始密码' : '留空则不修改密码'" class="w-full" inputClass="w-full" />
                 </div>
             </div>
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block" for="avatar">头像链接</label>
-                    <InputText id="avatar" v-model="form.avatarUrl" placeholder="https://example.com/avatar.png" />
+                    <InputText id="avatar" v-model="form.avatarUrl" placeholder="https://example.com/avatar.png" class="w-full" />
                 </div>
             </div>
             <div class="col-12">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block" for="bio">个人简介</label>
-                    <Textarea id="bio" v-model="form.bio" autoResize :rows="3" placeholder="填写个人简介" />
+                    <Textarea id="bio" v-model="form.bio" autoResize :rows="3" placeholder="填写个人简介" class="w-full" />
                 </div>
             </div>
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block">状态</label>
-                    <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" />
+                    <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full" />
                 </div>
             </div>
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block">角色</label>
-                    <MultiSelect v-model="form.roleIds" :options="roleOptions" optionLabel="label" optionValue="value" display="chip" placeholder="选择角色" />
+                    <MultiSelect v-model="form.roleIds" :options="roleOptions" optionLabel="label" optionValue="value" display="chip" placeholder="选择角色" class="w-full" />
                 </div>
             </div>
             <div class="col-12 flex justify-end gap-2 mt-2">
