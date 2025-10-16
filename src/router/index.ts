@@ -17,6 +17,14 @@ const routes: RouteRecordRaw[] = [
                 }
             },
             {
+                path: '/admin/users',
+                name: 'adminUsers',
+                component: () => import('@/views/admin/UserList.vue'),
+                meta: {
+                    breadcrumb: [{label: '权限管理'}, {label: '用户管理'}]
+                }
+            },
+            {
                 path: '/uikit/formlayout',
                 name: 'formlayout',
                 component: () => import('@/views/uikit/FormLayout.vue')

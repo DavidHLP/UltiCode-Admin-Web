@@ -9,10 +9,19 @@ import axios, {
     type InternalAxiosRequestConfig,
 } from 'axios'
 
+export interface ApiError {
+    status: number
+    code: string
+    message: string
+    details?: Record<string, unknown>
+}
+
 export interface ApiResponse<T = unknown> {
-    code?: number
-    message?: string
+    isSuccess: boolean
     data?: T
+    error?: ApiError | null
+    timestamp?: string
+    metadata?: Record<string, unknown>
 }
 
 export type RequestConfig = AxiosRequestConfig
@@ -43,23 +52,35 @@ service.interceptors.request.use(
     (error) => Promise.reject(error),
 )
 
+function isApiResponse<T = unknown>(payload: unknown): payload is ApiResponse<T> {
+    if (typeof payload !== 'object' || payload === null) {
+        return false
+    }
+    const record = payload as Record<string, unknown>
+    return 'isSuccess' in record && typeof record.isSuccess === 'boolean'
+}
+
 service.interceptors.response.use(
     (response: AxiosResponse<ApiResponse>) => {
         const res = response.data
-        if (
-            typeof res === 'object' &&
-            res !== null &&
-            'code' in res &&
-            res.code !== undefined &&
-            res.code !== 200
-        ) {
-            return Promise.reject(new Error(res.message || '请求失败'))
+        if (isApiResponse(res) && !res.isSuccess) {
+            const message = res.error?.message ?? '请求失败'
+            const rejection = new Error(message)
+            Object.assign(rejection, {apiError: res.error, metadata: res.metadata})
+            return Promise.reject(rejection)
         }
         return response
     },
-    (error: AxiosError<{ message?: string }>) => {
+    (error: AxiosError<ApiResponse | { message?: string }>) => {
         const status = error.response?.status
-        const message = error.response?.data?.message || error.message || '请求失败'
+        const responseData = error.response?.data
+        let messageFromResponse: string | undefined
+        if (isApiResponse(responseData)) {
+            messageFromResponse = responseData.error?.message
+        } else if (responseData && typeof responseData === 'object' && 'message' in responseData) {
+            messageFromResponse = (responseData as { message?: string }).message
+        }
+        const fallbackMessage = messageFromResponse ?? error.message ?? '请求失败'
 
         if (status === 401) {
             const authStore = useAuthStore()
@@ -75,20 +96,22 @@ service.interceptors.response.use(
             }
         }
 
-        return Promise.reject(new Error(message))
+        return Promise.reject(new Error(fallbackMessage))
     },
 )
 
 export function unwrapResponse<T>(payload: unknown): T {
-    if (payload && typeof payload === 'object' && 'data' in (payload as ApiResponse<T>)) {
-        const wrapped = payload as ApiResponse<T>
+    if (isApiResponse<T>(payload)) {
+        const wrapped = payload
         return (wrapped.data ?? (wrapped as unknown as T)) as T
     }
     return payload as T
 }
 
 export function requestData<T = unknown>(config: RequestConfig): Promise<T> {
-    return service.request<ApiResponse<T> | T>(config).then((response) => unwrapResponse<T>(response.data))
+    return service
+        .request<ApiResponse<T> | T>(config)
+        .then((response) => unwrapResponse<T>(response.data))
 }
 
 export default service
