@@ -1,15 +1,8 @@
 <script setup lang="ts">
-import type {RoleDto, UserView} from '@/api/admin/users';
-import {
-    createUser,
-    fetchRoles,
-    fetchUsers,
-    updateUser,
-    type UserCreatePayload,
-    type UserUpdatePayload
-} from '@/api/admin/users';
-import {useToast} from 'primevue/usetoast';
-import {computed, onMounted, ref} from 'vue';
+import type { RoleDto, UserView } from '@/api/admin/users';
+import { createUser, fetchRoles, fetchUsers, updateUser, type UserCreatePayload, type UserUpdatePayload } from '@/api/admin/users';
+import { useToast } from 'primevue/usetoast';
+import { computed, onMounted, ref } from 'vue';
 
 interface UserForm {
     username: string;
@@ -46,13 +39,11 @@ const form = ref<UserForm>({
 });
 
 const statusOptions = [
-    {label: '启用', value: 1},
-    {label: '禁用', value: 0}
+    { label: '启用', value: 1 },
+    { label: '禁用', value: 0 }
 ];
 
-const roleOptions = computed(() =>
-    roles.value.map((role) => ({label: role.name, value: role.id}))
-);
+const roleOptions = computed(() => roles.value.map((role) => ({ label: role.name, value: role.id })));
 
 onMounted(async () => {
     await Promise.all([loadRoles(), loadUsers()]);
@@ -144,16 +135,16 @@ function closeDialog() {
 
 async function submitForm() {
     if (!form.value.username.trim()) {
-        toast.add({severity: 'warn', summary: '校验失败', detail: '请输入用户名', life: 4000});
+        toast.add({ severity: 'warn', summary: '校验失败', detail: '请输入用户名', life: 4000 });
         return;
     }
     if (!form.value.email.trim()) {
-        toast.add({severity: 'warn', summary: '校验失败', detail: '请输入邮箱', life: 4000});
+        toast.add({ severity: 'warn', summary: '校验失败', detail: '请输入邮箱', life: 4000 });
         return;
     }
     const isCreate = editingId.value === null;
     if (isCreate && !form.value.password.trim()) {
-        toast.add({severity: 'warn', summary: '校验失败', detail: '请输入密码', life: 4000});
+        toast.add({ severity: 'warn', summary: '校验失败', detail: '请输入密码', life: 4000 });
         return;
     }
 
@@ -170,7 +161,7 @@ async function submitForm() {
                 roleIds: form.value.roleIds
             };
             await createUser(payload);
-            toast.add({severity: 'success', summary: '创建成功', detail: '用户已创建', life: 3000});
+            toast.add({ severity: 'success', summary: '创建成功', detail: '用户已创建', life: 3000 });
         } else {
             const payload: UserUpdatePayload = {
                 username: form.value.username.trim(),
@@ -184,7 +175,7 @@ async function submitForm() {
                 payload.password = form.value.password.trim();
             }
             await updateUser(editingId.value!, payload);
-            toast.add({severity: 'success', summary: '更新成功', detail: '用户信息已更新', life: 3000});
+            toast.add({ severity: 'success', summary: '更新成功', detail: '用户信息已更新', life: 3000 });
         }
         dialogVisible.value = false;
         await loadUsers();
@@ -200,7 +191,7 @@ async function submitForm() {
     }
 }
 
-function onPageChange(event: {page: number; rows: number}) {
+function onPageChange(event: { page: number; rows: number }) {
     page.value = event.page + 1;
     size.value = event.rows;
     loadUsers();
@@ -239,32 +230,10 @@ function formatDate(value?: string | null) {
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
                         <span class="p-input-icon-left">
-                            <i class="pi pi-search" />
-                            <InputText
-                                v-model="keyword"
-                                placeholder="搜索用户名或邮箱"
-                                @keyup.enter="onSearch"
-                                style="min-width: 18rem"
-                            />
+                            <InputText v-model="keyword" placeholder="搜索用户名或邮箱" @keyup.enter="onSearch" style="min-width: 18rem" />
                         </span>
-                        <Dropdown
-                            v-model="statusFilter"
-                            :options="statusOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            placeholder="状态"
-                            :showClear="true"
-                            style="min-width: 10rem"
-                        />
-                        <Dropdown
-                            v-model="roleFilter"
-                            :options="roleOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            placeholder="角色"
-                            :showClear="true"
-                            style="min-width: 10rem"
-                        />
+                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="状态" :showClear="true" style="min-width: 10rem" />
+                        <Dropdown v-model="roleFilter" :options="roleOptions" optionLabel="label" optionValue="value" placeholder="角色" :showClear="true" style="min-width: 10rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -324,58 +293,52 @@ function formatDate(value?: string | null) {
         </div>
     </div>
 
-    <Dialog
-        v-model:visible="dialogVisible"
-        modal
-        :header="editingId === null ? '新建用户' : '编辑用户'"
-        :style="{ width: '32rem' }"
-        :breakpoints="{ '960px': '90vw', '640px': '95vw' }"
-        @hide="closeDialog"
-    >
-        <form class="flex flex-column gap-3" @submit.prevent="submitForm">
-            <div class="field">
-                <label class="font-medium text-sm mb-1 block" for="username">用户名</label>
-                <InputText id="username" v-model="form.username" placeholder="请输入用户名" autofocus />
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建用户' : '编辑用户'" :style="{ width: '32rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
+        <form class="grid form-grid" @submit.prevent="submitForm">
+            <div class="col-12 md:col-6">
+                <div class="field">
+                    <label class="font-medium text-sm mb-1 block" for="username">用户名</label>
+                    <InputText id="username" v-model="form.username" placeholder="请输入用户名" autofocus />
+                </div>
             </div>
-            <div class="field">
-                <label class="font-medium text-sm mb-1 block" for="email">邮箱</label>
-                <InputText id="email" v-model="form.email" placeholder="请输入邮箱" />
+            <div class="col-12 md:col-6">
+                <div class="field">
+                    <label class="font-medium text-sm mb-1 block" for="email">邮箱</label>
+                    <InputText id="email" v-model="form.email" placeholder="请输入邮箱" />
+                </div>
             </div>
-            <div class="field">
-                <label class="font-medium text-sm mb-1 block" for="password">密码</label>
-                <Password
-                    id="password"
-                    v-model="form.password"
-                    toggleMask
-                    :feedback="false"
-                    :placeholder="editingId === null ? '请输入初始密码' : '留空则不修改密码'"
-                />
-                <small v-if="editingId !== null" class="text-color-secondary">留空保留原密码</small>
+            <div class="col-12 md:col-6">
+                <div class="field">
+                    <label class="font-medium text-sm mb-1 block" for="password">密码</label>
+                    <Password id="password" v-model="form.password" toggleMask :feedback="false" :placeholder="editingId === null ? '请输入初始密码' : '留空则不修改密码'" />
+                    <small v-if="editingId !== null" class="text-color-secondary">留空保留原密码</small>
+                </div>
             </div>
-            <div class="field">
-                <label class="font-medium text-sm mb-1 block" for="avatar">头像链接</label>
-                <InputText id="avatar" v-model="form.avatarUrl" placeholder="https://example.com/avatar.png" />
+            <div class="col-12 md:col-6">
+                <div class="field">
+                    <label class="font-medium text-sm mb-1 block" for="avatar">头像链接</label>
+                    <InputText id="avatar" v-model="form.avatarUrl" placeholder="https://example.com/avatar.png" />
+                </div>
             </div>
-            <div class="field">
-                <label class="font-medium text-sm mb-1 block" for="bio">个人简介</label>
-                <Textarea id="bio" v-model="form.bio" autoResize :rows="3" placeholder="填写个人简介" />
+            <div class="col-12">
+                <div class="field">
+                    <label class="font-medium text-sm mb-1 block" for="bio">个人简介</label>
+                    <Textarea id="bio" v-model="form.bio" autoResize :rows="3" placeholder="填写个人简介" />
+                </div>
             </div>
-            <div class="field">
-                <label class="font-medium text-sm mb-1 block">状态</label>
-                <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" />
+            <div class="col-12 md:col-6">
+                <div class="field">
+                    <label class="font-medium text-sm mb-1 block">状态</label>
+                    <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" />
+                </div>
             </div>
-            <div class="field">
-                <label class="font-medium text-sm mb-1 block">角色</label>
-                <MultiSelect
-                    v-model="form.roleIds"
-                    :options="roleOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    display="chip"
-                    placeholder="选择角色"
-                />
+            <div class="col-12 md:col-6">
+                <div class="field">
+                    <label class="font-medium text-sm mb-1 block">角色</label>
+                    <MultiSelect v-model="form.roleIds" :options="roleOptions" optionLabel="label" optionValue="value" display="chip" placeholder="选择角色" />
+                </div>
             </div>
-            <div class="flex justify-end gap-2 mt-4">
+            <div class="col-12 flex justify-end gap-2 mt-2">
                 <Button type="button" label="取消" severity="secondary" @click="closeDialog" />
                 <Button type="submit" label="保存" icon="pi pi-check" :loading="saving" />
             </div>
@@ -388,5 +351,7 @@ function formatDate(value?: string | null) {
     display: flex;
     flex-direction: column;
 }
+.form-grid {
+    gap: 1.5rem;
+}
 </style>
-
