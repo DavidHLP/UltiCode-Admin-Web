@@ -1,5 +1,5 @@
-import type {PageResult} from '@/api/types';
-import {requestData} from '@/utils/request';
+import type { PageResult } from '@/api/types';
+import { requestData } from '@/utils/request';
 
 export interface RoleDto {
     id: number;
@@ -51,11 +51,12 @@ export interface UserUpdatePayload {
 
 export type UserPage = PageResult<UserView>;
 
-export function fetchUsers(params: UserQuery) {
+export function fetchUsers(params: UserQuery, signal?: AbortSignal) {
     return requestData<UserPage>({
         url: '/api/admin/users',
         method: 'get',
-        params
+        params,
+        signal
     });
 }
 

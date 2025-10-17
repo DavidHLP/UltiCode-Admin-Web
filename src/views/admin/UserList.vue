@@ -2,7 +2,7 @@
 import type { RoleDto, UserView } from '@/api/admin/users';
 import { createUser, fetchRoles, fetchUsers, updateUser, type UserCreatePayload, type UserUpdatePayload } from '@/api/admin/users';
 import { useToast } from 'primevue/usetoast';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 interface UserForm {
     username: string;
@@ -28,6 +28,10 @@ const roles = ref<RoleDto[]>([]);
 const editingId = ref<number | null>(null);
 const toast = useToast();
 
+// 请求控制
+let abortController: AbortController | null = null;
+let debounceTimer: NodeJS.Timeout | null = null;
+
 const form = ref<UserForm>({
     username: '',
     email: '',
@@ -45,25 +49,71 @@ const statusOptions = [
 
 const roleOptions = computed(() => roles.value.map((role) => ({ label: role.name, value: role.id })));
 
-onMounted(async () => {
-    await Promise.all([loadRoles(), loadUsers()]);
+// 监听搜索条件变化，自动触发搜索（带防抖）
+watch([keyword, statusFilter, roleFilter], () => {
+    debouncedSearch();
 });
 
+onMounted(async () => {
+    await loadRoles();
+    await loadUsers();
+});
+
+onUnmounted(() => {
+    // 清理定时器和取消未完成的请求
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    if (abortController) {
+        abortController.abort();
+    }
+});
+
+// 防抖搜索函数
+function debouncedSearch() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+        page.value = 1;
+        loadUsers();
+    }, 300);
+}
+
 async function loadUsers() {
+    // 取消之前的请求
+    if (abortController) {
+        abortController.abort();
+    }
+    const controller = new AbortController();
+    abortController = controller;
+
     loading.value = true;
     try {
-        const data = await fetchUsers({
-            page: page.value,
-            size: size.value,
-            keyword: keyword.value?.trim() || undefined,
-            status: statusFilter.value ?? undefined,
-            roleId: roleFilter.value ?? undefined
-        });
+        const data = await fetchUsers(
+            {
+                page: page.value,
+                size: size.value,
+                keyword: keyword.value?.trim() || undefined,
+                status: statusFilter.value ?? undefined,
+                roleId: roleFilter.value ?? undefined
+            },
+            controller.signal
+        );
         users.value = data.items ?? [];
         total.value = data.total ?? 0;
-        page.value = Number(data.page ?? page.value);
-        size.value = Number(data.size ?? size.value);
-    } catch (error) {
+        // 只在服务端返回的 page 与当前 page 不同时才更新（避免不必要的响应式触发）
+        if (data.page !== undefined && Number(data.page) !== page.value) {
+            page.value = Number(data.page);
+        }
+        if (data.size !== undefined && Number(data.size) !== size.value) {
+            size.value = Number(data.size);
+        }
+    } catch (error: any) {
+        // 忽略取消的请求错误
+        if (error?.name === 'AbortError' || error?.name === 'CanceledError') {
+            return;
+        }
         toast.add({
             severity: 'error',
             summary: '加载失败',
@@ -71,11 +121,19 @@ async function loadUsers() {
             life: 4000
         });
     } finally {
-        loading.value = false;
+        if (abortController === controller) {
+            loading.value = false;
+            abortController = null;
+        }
     }
 }
 
 async function loadRoles() {
+    // 如果已经加载过角色，直接返回
+    if (roles.value.length > 0) {
+        return;
+    }
+
     try {
         roles.value = await fetchRoles();
     } catch (error) {
@@ -90,15 +148,26 @@ async function loadRoles() {
 }
 
 function onSearch() {
+    // 取消防抖定时器，立即搜索
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
     page.value = 1;
     loadUsers();
 }
 
 function clearFilters() {
+    // 清除防抖定时器
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
     keyword.value = '';
     statusFilter.value = null;
     roleFilter.value = null;
-    onSearch();
+    page.value = 1;
+    loadUsers();
 }
 
 function openCreate() {
