@@ -25,6 +25,22 @@ const routes: RouteRecordRaw[] = [
                 }
             },
             {
+                path: '/admin/roles',
+                name: 'adminRoles',
+                component: () => import('@/views/admin/RoleList.vue'),
+                meta: {
+                    breadcrumb: [{label: '权限管理'}, {label: '角色管理'}]
+                }
+            },
+            {
+                path: '/admin/problems',
+                name: 'adminProblems',
+                component: () => import('@/views/admin/ProblemList.vue'),
+                meta: {
+                    breadcrumb: [{label: '题库管理'}, {label: '题目管理'}]
+                }
+            },
+            {
                 path: '/uikit/formlayout',
                 name: 'formlayout',
                 component: () => import('@/views/uikit/FormLayout.vue')

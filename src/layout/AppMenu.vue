@@ -11,8 +11,13 @@ const model = ref([
     {
         label: '权限管理',
         items: [
-            { label: '用户管理', icon: 'pi pi-fw pi-users', to: '/admin/users' }
+            { label: '用户管理', icon: 'pi pi-fw pi-users', to: '/admin/users' },
+            { label: '角色管理', icon: 'pi pi-fw pi-shield', to: '/admin/roles' }
         ]
+    },
+    {
+        label: '题库管理',
+        items: [{ label: '题目管理', icon: 'pi pi-fw pi-book', to: '/admin/problems' }]
     }
 ]);
 </script>

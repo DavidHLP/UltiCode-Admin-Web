@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { RoleDto, UserView } from '@/api/admin/users';
-import { createUser, fetchRoles, fetchUsers, updateUser, type UserCreatePayload, type UserUpdatePayload } from '@/api/admin/users';
+import { fetchRoleOptions, type RoleDto } from '@/api/admin/role';
+import type { UserView } from '@/api/admin/users';
+import { createUser, fetchUsers, updateUser, type UserCreatePayload, type UserUpdatePayload } from '@/api/admin/users';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -135,7 +136,7 @@ async function loadRoles() {
     }
 
     try {
-        roles.value = await fetchRoles();
+        roles.value = await fetchRoleOptions();
     } catch (error) {
         toast.add({
             severity: 'warn',

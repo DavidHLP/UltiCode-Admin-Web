@@ -1,66 +1,11 @@
 <script setup lang="ts">
-import type { MenuItem, MenuItemCommandEvent } from 'primevue/menuitem';
 import { computed, ref, watch } from 'vue';
-import { useRoute, useRouter, type RouteLocationNormalizedLoaded, type RouteLocationRaw } from 'vue-router';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
 import AppTopbar from './AppTopbar.vue';
 import { useLayout } from './composables/layout';
 
 const { layoutConfig, layoutState, isSidebarActive } = useLayout();
-const route = useRoute();
-const router = useRouter();
-
-const breadcrumbHome = computed<MenuItem>(() => {
-    const resolved = router.resolve('/');
-
-    return {
-        icon: 'pi pi-home',
-        url: resolved.href,
-        command: (event: MenuItemCommandEvent) => {
-            event.originalEvent.preventDefault();
-            void router.push('/');
-        }
-    };
-});
-
-interface BreadcrumbEntry {
-    label: string | ((currentRoute: RouteLocationNormalizedLoaded) => string);
-    to?: RouteLocationRaw | ((currentRoute: RouteLocationNormalizedLoaded) => RouteLocationRaw | undefined);
-}
-
-const breadcrumbItems = computed<MenuItem[]>(() => {
-    const metadata = route.meta?.breadcrumb as BreadcrumbEntry[] | undefined;
-    if (!metadata) {
-        return [];
-    }
-
-    const items: MenuItem[] = [];
-
-    metadata.forEach((entry) => {
-        const label = typeof entry.label === 'function' ? entry.label(route) : entry.label;
-        if (!label) {
-            return;
-        }
-
-        const target = typeof entry.to === 'function' ? entry.to(route) : entry.to;
-        if (target) {
-            const resolved = router.resolve(target);
-            items.push({
-                label,
-                url: resolved.href,
-                command: (event: MenuItemCommandEvent) => {
-                    event.originalEvent.preventDefault();
-                    void router.push(target);
-                }
-            });
-        } else {
-            items.push({ label });
-        }
-    });
-
-    return items;
-});
 
 const outsideClickListener = ref<null | ((event: MouseEvent) => void)>(null);
 
@@ -125,11 +70,6 @@ function isOutsideClicked(event: MouseEvent) {
         <app-sidebar></app-sidebar>
         <div class="layout-main-container">
             <div class="layout-main">
-                <Transition name="fade">
-                    <div v-if="breadcrumbItems.length" key="breadcrumb">
-                        <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" />
-                    </div>
-                </Transition>
                 <router-view></router-view>
             </div>
             <app-footer></app-footer>

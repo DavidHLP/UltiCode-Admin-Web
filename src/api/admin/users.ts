@@ -1,11 +1,6 @@
+import type { RoleDto } from '@/api/admin/role';
 import type { PageResult } from '@/api/types';
 import { requestData } from '@/utils/request';
-
-export interface RoleDto {
-    id: number;
-    code: string;
-    name: string;
-}
 
 export interface UserView {
     id: number;
@@ -82,11 +77,3 @@ export function updateUser(userId: number, payload: UserUpdatePayload) {
         data: payload
     });
 }
-
-export function fetchRoles() {
-    return requestData<RoleDto[]>({
-        url: '/api/admin/roles',
-        method: 'get'
-    });
-}
-
