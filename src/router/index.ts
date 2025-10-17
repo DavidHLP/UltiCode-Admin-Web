@@ -41,6 +41,30 @@ const routes: RouteRecordRaw[] = [
                 }
             },
             {
+                path: '/admin/problems/new',
+                name: 'adminProblemsCreate',
+                component: () => import('@/views/admin/ProblemEdit.vue'),
+                meta: {
+                    breadcrumb: [
+                        {label: '题库管理'},
+                        {label: '题目管理', to: '/admin/problems'},
+                        {label: '新建题目'}
+                    ]
+                }
+            },
+            {
+                path: '/admin/problems/:problemId',
+                name: 'adminProblemsEdit',
+                component: () => import('@/views/admin/ProblemEdit.vue'),
+                meta: {
+                    breadcrumb: [
+                        {label: '题库管理'},
+                        {label: '题目管理', to: '/admin/problems'},
+                        {label: '编辑题目'}
+                    ]
+                }
+            },
+            {
                 path: '/uikit/formlayout',
                 name: 'formlayout',
                 component: () => import('@/views/uikit/FormLayout.vue')
