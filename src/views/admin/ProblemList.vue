@@ -258,7 +258,6 @@ function onPageChange(event: { page: number; rows: number }) {
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
                         <span class="p-input-icon-left">
-                            <i class="pi pi-search" />
                             <InputText
                                 v-model="keyword"
                                 placeholder="搜索题目别名或标题"
