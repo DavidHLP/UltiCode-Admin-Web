@@ -17,7 +17,13 @@ const model = ref([
     },
     {
         label: '题库管理',
-        items: [{ label: '题目管理', icon: 'pi pi-fw pi-book', to: '/admin/problems' }]
+        items: [
+            { label: '题目管理', icon: 'pi pi-fw pi-book', to: '/admin/problems' },
+            { label: '分类管理', icon: 'pi pi-fw pi-sitemap', to: '/admin/categories' },
+            { label: '难度管理', icon: 'pi pi-fw pi-sliders-h', to: '/admin/difficulties' },
+            { label: '语言管理', icon: 'pi pi-fw pi-code', to: '/admin/languages' },
+            { label: '标签管理', icon: 'pi pi-fw pi-tags', to: '/admin/tags' }
+        ]
     }
 ]);
 </script>

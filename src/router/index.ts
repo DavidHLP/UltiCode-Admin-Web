@@ -41,6 +41,38 @@ const routes: RouteRecordRaw[] = [
                 }
             },
             {
+                path: '/admin/categories',
+                name: 'adminCategories',
+                component: () => import('@/views/admin/CategoryList.vue'),
+                meta: {
+                    breadcrumb: [{label: '题库管理'}, {label: '分类管理'}]
+                }
+            },
+            {
+                path: '/admin/difficulties',
+                name: 'adminDifficulties',
+                component: () => import('@/views/admin/DifficultyList.vue'),
+                meta: {
+                    breadcrumb: [{label: '题库管理'}, {label: '难度管理'}]
+                }
+            },
+            {
+                path: '/admin/languages',
+                name: 'adminLanguages',
+                component: () => import('@/views/admin/LanguageList.vue'),
+                meta: {
+                    breadcrumb: [{label: '题库管理'}, {label: '语言管理'}]
+                }
+            },
+            {
+                path: '/admin/tags',
+                name: 'adminTags',
+                component: () => import('@/views/admin/TagList.vue'),
+                meta: {
+                    breadcrumb: [{label: '题库管理'}, {label: '标签管理'}]
+                }
+            },
+            {
                 path: '/admin/problems/new',
                 name: 'adminProblemsCreate',
                 component: () => import('@/views/admin/ProblemEdit.vue'),
