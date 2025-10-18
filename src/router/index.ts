@@ -1,6 +1,6 @@
 import AppLayout from '@/layout/AppLayout.vue';
-import {useAuthStore} from '@/stores/auth';
-import {createRouter, createWebHistory, type RouteRecordRaw} from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
     {
@@ -76,6 +76,24 @@ const routes: RouteRecordRaw[] = [
                 path: '/admin/problems/new',
                 name: 'adminProblemsCreate',
                 component: () => import('@/views/admin/ProblemEdit.vue'),
+                redirect: { name: 'adminProblemsCreateBasic' },
+                children: [
+                    {
+                        path: 'basic',
+                        name: 'adminProblemsCreateBasic',
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorBasics.vue')
+                    },
+                    {
+                        path: 'statements',
+                        name: 'adminProblemsCreateStatements',
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorStatements.vue')
+                    },
+                    {
+                        path: 'configurations',
+                        name: 'adminProblemsCreateConfigurations',
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorConfigurations.vue')
+                    }
+                ],
                 meta: {
                     breadcrumb: [
                         {label: '题库管理'},
@@ -88,6 +106,24 @@ const routes: RouteRecordRaw[] = [
                 path: '/admin/problems/:problemId',
                 name: 'adminProblemsEdit',
                 component: () => import('@/views/admin/ProblemEdit.vue'),
+                redirect: { name: 'adminProblemsEditBasic' },
+                children: [
+                    {
+                        path: 'basic',
+                        name: 'adminProblemsEditBasic',
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorBasics.vue')
+                    },
+                    {
+                        path: 'statements',
+                        name: 'adminProblemsEditStatements',
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorStatements.vue')
+                    },
+                    {
+                        path: 'configurations',
+                        name: 'adminProblemsEditConfigurations',
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorConfigurations.vue')
+                    }
+                ],
                 meta: {
                     breadcrumb: [
                         {label: '题库管理'},
