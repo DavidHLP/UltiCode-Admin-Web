@@ -1,3 +1,4 @@
+import type { PageResult } from '@/api/types.ts';
 import { requestData } from '@/utils/request.ts';
 
 export interface CategoryView {
@@ -8,6 +9,8 @@ export interface CategoryView {
 
 export interface CategoryQuery {
     keyword?: string;
+    page?: number;
+    size?: number;
 }
 
 export interface CategoryCreatePayload {
@@ -20,8 +23,10 @@ export interface CategoryUpdatePayload {
     name?: string;
 }
 
+export type CategoryListResponse = PageResult<CategoryView>;
+
 export function fetchCategories(params?: CategoryQuery, signal?: AbortSignal) {
-    return requestData<CategoryView[]>({
+    return requestData<CategoryListResponse>({
         url: '/api/admin/categories',
         method: 'get',
         params,

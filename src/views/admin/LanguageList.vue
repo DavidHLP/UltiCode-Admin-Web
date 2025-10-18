@@ -25,6 +25,9 @@ const loading = ref(false);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const editingId = ref<number | null>(null);
+const total = ref(0);
+const page = ref(1);
+const size = ref(10);
 const toast = useToast();
 
 const form = ref<LanguageForm>({
@@ -50,12 +53,22 @@ async function loadLanguages() {
     loading.value = true;
     try {
         const query = keyword.value.trim();
-        languages.value = await fetchLanguages(
+        const data = await fetchLanguages(
                 {
                     keyword: query || undefined,
-                    isActive: activeFilter.value ?? undefined
+                    isActive: activeFilter.value ?? undefined,
+                    page: page.value,
+                    size: size.value
                 }
         );
+        languages.value = data.items ?? [];
+        total.value = data.total ?? 0;
+        if (typeof data.page === 'number') {
+            page.value = Math.max(1, Number(data.page));
+        }
+        if (typeof data.size === 'number' && Number(data.size) > 0) {
+            size.value = Number(data.size);
+        }
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -69,12 +82,14 @@ async function loadLanguages() {
 }
 
 function onSearch() {
+    page.value = 1;
     loadLanguages();
 }
 
 function clearFilters() {
     keyword.value = '';
     activeFilter.value = null;
+    page.value = 1;
     loadLanguages();
 }
 
@@ -162,6 +177,10 @@ async function removeLanguage(language: LanguageView) {
         await deleteLanguage(language.id);
         toast.add({ severity: 'success', summary: '删除成功', detail: '语言已删除', life: 3000 });
         await loadLanguages();
+        if (!languages.value.length && total.value > 0 && page.value > 1) {
+            page.value -= 1;
+            await loadLanguages();
+        }
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -170,6 +189,12 @@ async function removeLanguage(language: LanguageView) {
             life: 4000
         });
     }
+}
+
+function onPageChange(event: { page: number; rows: number }) {
+    page.value = event.page + 1;
+    size.value = event.rows;
+    loadLanguages();
 }
 </script>
 
@@ -201,7 +226,19 @@ async function removeLanguage(language: LanguageView) {
                     </div>
                 </div>
 
-                <DataTable :value="languages" dataKey="id" :loading="loading" responsiveLayout="scroll">
+                <DataTable
+                    :value="languages"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :first="(page - 1) * size"
+                    responsiveLayout="scroll"
+                    @page="onPageChange"
+                >
                     <Column field="displayName" header="语言名称" style="min-width: 12rem" />
                     <Column field="code" header="语言编码" style="min-width: 10rem" />
                     <Column field="runtimeImage" header="运行镜像" style="min-width: 14rem">

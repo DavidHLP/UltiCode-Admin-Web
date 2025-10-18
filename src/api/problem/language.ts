@@ -1,3 +1,4 @@
+import type { PageResult } from '@/api/types.ts';
 import { requestData } from '@/utils/request.ts';
 
 export interface LanguageView {
@@ -11,6 +12,8 @@ export interface LanguageView {
 export interface LanguageQuery {
     keyword?: string;
     isActive?: boolean;
+    page?: number;
+    size?: number;
 }
 
 export interface LanguageCreatePayload {
@@ -27,8 +30,10 @@ export interface LanguageUpdatePayload {
     isActive?: boolean;
 }
 
+export type LanguageListResponse = PageResult<LanguageView>;
+
 export function fetchLanguages(params?: LanguageQuery, signal?: AbortSignal) {
-    return requestData<LanguageView[]>({
+    return requestData<LanguageListResponse>({
         url: '/api/admin/languages',
         method: 'get',
         params,

@@ -1,3 +1,4 @@
+import type { PageResult } from '@/api/types.ts';
 import { requestData } from '@/utils/request.ts';
 
 export interface TagView {
@@ -10,6 +11,8 @@ export interface TagView {
 
 export interface TagQuery {
     keyword?: string;
+    page?: number;
+    size?: number;
 }
 
 export interface TagCreatePayload {
@@ -22,8 +25,10 @@ export interface TagUpdatePayload {
     name?: string;
 }
 
+export type TagListResponse = PageResult<TagView>;
+
 export function fetchTags(params?: TagQuery, signal?: AbortSignal) {
-    return requestData<TagView[]>({
+    return requestData<TagListResponse>({
         url: '/api/admin/tags',
         method: 'get',
         params,

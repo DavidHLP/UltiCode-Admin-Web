@@ -22,6 +22,9 @@ const loading = ref(false);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const editingId = ref<number | null>(null);
+const total = ref(0);
+const page = ref(1);
+const size = ref(10);
 const toast = useToast();
 
 const form = ref<TagForm>({
@@ -37,7 +40,21 @@ async function loadTags() {
     loading.value = true;
     try {
         const query = keyword.value.trim();
-        tags.value = await fetchTags(query ? { keyword: query } : undefined);
+        const data = await fetchTags(
+                {
+                    keyword: query ? query : undefined,
+                    page: page.value,
+                    size: size.value
+                }
+        );
+        tags.value = data.items ?? [];
+        total.value = data.total ?? 0;
+        if (typeof data.page === 'number') {
+            page.value = Math.max(1, Number(data.page));
+        }
+        if (typeof data.size === 'number' && Number(data.size) > 0) {
+            size.value = Number(data.size);
+        }
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -51,11 +68,13 @@ async function loadTags() {
 }
 
 function onSearch() {
+    page.value = 1;
     loadTags();
 }
 
 function clearFilters() {
     keyword.value = '';
+    page.value = 1;
     loadTags();
 }
 
@@ -127,6 +146,10 @@ async function removeTag(tag: TagView) {
         await deleteTag(tag.id);
         toast.add({ severity: 'success', summary: '删除成功', detail: '标签已删除', life: 3000 });
         await loadTags();
+        if (!tags.value.length && total.value > 0 && page.value > 1) {
+            page.value -= 1;
+            await loadTags();
+        }
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -135,6 +158,12 @@ async function removeTag(tag: TagView) {
             life: 4000
         });
     }
+}
+
+function onPageChange(event: { page: number; rows: number }) {
+    page.value = event.page + 1;
+    size.value = event.rows;
+    loadTags();
 }
 
 function formatDate(value?: string | null) {
@@ -175,7 +204,19 @@ function formatDate(value?: string | null) {
                     </div>
                 </div>
 
-                <DataTable :value="tags" dataKey="id" :loading="loading" responsiveLayout="scroll">
+                <DataTable
+                    :value="tags"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :first="(page - 1) * size"
+                    responsiveLayout="scroll"
+                    @page="onPageChange"
+                >
                     <Column field="slug" header="标签别名" style="min-width: 10rem" />
                     <Column field="name" header="标签名称" style="min-width: 10rem" />
                     <Column field="createdAt" header="创建时间" style="min-width: 12rem">

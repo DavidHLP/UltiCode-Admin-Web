@@ -1,3 +1,4 @@
+import type { PageResult } from '@/api/types.ts';
 import { requestData } from '@/utils/request.ts';
 
 export interface DifficultyView {
@@ -8,6 +9,8 @@ export interface DifficultyView {
 
 export interface DifficultyQuery {
     keyword?: string;
+    page?: number;
+    size?: number;
 }
 
 export interface DifficultyCreatePayload {
@@ -21,8 +24,10 @@ export interface DifficultyUpdatePayload {
     sortKey?: number;
 }
 
+export type DifficultyListResponse = PageResult<DifficultyView>;
+
 export function fetchDifficulties(params?: DifficultyQuery, signal?: AbortSignal) {
-    return requestData<DifficultyView[]>({
+    return requestData<DifficultyListResponse>({
         url: '/api/admin/difficulties',
         method: 'get',
         params,

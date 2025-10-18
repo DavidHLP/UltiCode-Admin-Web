@@ -22,6 +22,9 @@ const loading = ref(false);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const editingId = ref<number | null>(null);
+const total = ref(0);
+const page = ref(1);
+const size = ref(10);
 const toast = useToast();
 
 const form = ref<CategoryForm>({
@@ -37,7 +40,21 @@ async function loadCategories() {
     loading.value = true;
     try {
         const query = keyword.value.trim();
-        categories.value = await fetchCategories(query ? { keyword: query } : undefined);
+        const data = await fetchCategories(
+                {
+                    keyword: query ? query : undefined,
+                    page: page.value,
+                    size: size.value
+                }
+        );
+        categories.value = data.items ?? [];
+        total.value = data.total ?? 0;
+        if (typeof data.page === 'number') {
+            page.value = Math.max(1, Number(data.page));
+        }
+        if (typeof data.size === 'number' && Number(data.size) > 0) {
+            size.value = Number(data.size);
+        }
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -51,11 +68,13 @@ async function loadCategories() {
 }
 
 function onSearch() {
+    page.value = 1;
     loadCategories();
 }
 
 function clearFilters() {
     keyword.value = '';
+    page.value = 1;
     loadCategories();
 }
 
@@ -127,6 +146,10 @@ async function removeCategory(category: CategoryView) {
         await deleteCategory(category.id);
         toast.add({ severity: 'success', summary: '删除成功', detail: '分类已删除', life: 3000 });
         await loadCategories();
+        if (!categories.value.length && total.value > 0 && page.value > 1) {
+            page.value -= 1;
+            await loadCategories();
+        }
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -135,6 +158,12 @@ async function removeCategory(category: CategoryView) {
             life: 4000
         });
     }
+}
+
+function onPageChange(event: { page: number; rows: number }) {
+    page.value = event.page + 1;
+    size.value = event.rows;
+    loadCategories();
 }
 </script>
 
@@ -158,7 +187,19 @@ async function removeCategory(category: CategoryView) {
                     </div>
                 </div>
 
-                <DataTable :value="categories" dataKey="id" :loading="loading" responsiveLayout="scroll">
+                <DataTable
+                    :value="categories"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :totalRecords="total"
+                    :paginator="true"
+                    :lazy="true"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :first="(page - 1) * size"
+                    responsiveLayout="scroll"
+                    @page="onPageChange"
+                >
                     <Column field="code" header="分类编码" style="min-width: 10rem" />
                     <Column field="name" header="分类名称" style="min-width: 10rem" />
                     <Column header="操作" style="min-width: 10rem">

@@ -23,6 +23,9 @@ const loading = ref(false);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const editingId = ref<number | null>(null);
+const total = ref(0);
+const page = ref(1);
+const size = ref(10);
 const toast = useToast();
 
 const form = ref<DifficultyForm>({
@@ -39,7 +42,21 @@ async function loadDifficulties() {
     loading.value = true;
     try {
         const query = keyword.value.trim();
-        difficulties.value = await fetchDifficulties(query ? { keyword: query } : undefined);
+        const data = await fetchDifficulties(
+                {
+                    keyword: query ? query : undefined,
+                    page: page.value,
+                    size: size.value
+                }
+        );
+        difficulties.value = data.items ?? [];
+        total.value = data.total ?? 0;
+        if (typeof data.page === 'number') {
+            page.value = Math.max(1, Number(data.page));
+        }
+        if (typeof data.size === 'number' && Number(data.size) > 0) {
+            size.value = Number(data.size);
+        }
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -53,11 +70,13 @@ async function loadDifficulties() {
 }
 
 function onSearch() {
+    page.value = 1;
     loadDifficulties();
 }
 
 function clearFilters() {
     keyword.value = '';
+    page.value = 1;
     loadDifficulties();
 }
 
@@ -138,6 +157,10 @@ async function removeDifficulty(difficulty: DifficultyView) {
         await deleteDifficulty(difficulty.id);
         toast.add({ severity: 'success', summary: '删除成功', detail: '难度已删除', life: 3000 });
         await loadDifficulties();
+        if (!difficulties.value.length && total.value > 0 && page.value > 1) {
+            page.value -= 1;
+            await loadDifficulties();
+        }
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -146,6 +169,12 @@ async function removeDifficulty(difficulty: DifficultyView) {
             life: 4000
         });
     }
+}
+
+function onPageChange(event: { page: number; rows: number }) {
+    page.value = event.page + 1;
+    size.value = event.rows;
+    loadDifficulties();
 }
 </script>
 
@@ -169,7 +198,19 @@ async function removeDifficulty(difficulty: DifficultyView) {
                     </div>
                 </div>
 
-                <DataTable :value="difficulties" dataKey="id" :loading="loading" responsiveLayout="scroll">
+                <DataTable
+                    :value="difficulties"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :first="(page - 1) * size"
+                    responsiveLayout="scroll"
+                    @page="onPageChange"
+                >
                     <Column field="id" header="难度ID" style="min-width: 8rem" />
                     <Column field="code" header="难度编码" style="min-width: 10rem" />
                     <Column field="sortKey" header="排序键" style="min-width: 8rem" />
