@@ -1,4 +1,4 @@
-import { requestData } from '@/utils/request';
+import { requestData } from '@/utils/request.ts';
 
 export interface TagView {
     id: number;

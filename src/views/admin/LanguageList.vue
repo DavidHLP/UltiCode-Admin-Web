@@ -7,7 +7,7 @@ import {
     type LanguageCreatePayload,
     type LanguageUpdatePayload,
     type LanguageView
-} from '@/api/admin/language';
+} from '@/api/problem/language.ts';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 

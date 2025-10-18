@@ -7,7 +7,7 @@ import {
     type DifficultyCreatePayload,
     type DifficultyUpdatePayload,
     type DifficultyView
-} from '@/api/admin/difficulty';
+} from '@/api/problem/difficulty.ts';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 

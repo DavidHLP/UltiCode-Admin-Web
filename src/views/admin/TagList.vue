@@ -7,7 +7,7 @@ import {
     type TagCreatePayload,
     type TagUpdatePayload,
     type TagView
-} from '@/api/admin/tag';
+} from '@/api/problem/tag.ts';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 

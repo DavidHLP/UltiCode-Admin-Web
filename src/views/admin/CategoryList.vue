@@ -7,7 +7,7 @@ import {
     type CategoryCreatePayload,
     type CategoryUpdatePayload,
     type CategoryView
-} from '@/api/admin/category';
+} from '@/api/problem/category.ts';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
