@@ -34,7 +34,7 @@ export interface RegisterPayload {
 }
 
 export interface RefreshPayload {
-    refreshToken: string;
+    refreshToken?: string;
 }
 
 export interface ForgotPasswordPayload {
@@ -71,11 +71,11 @@ export function requestRegistrationCode(payload: RegistrationCodePayload) {
     });
 }
 
-export function refreshToken(payload: RefreshPayload) {
+export function refreshToken(payload?: RefreshPayload) {
     return requestData<AuthResponse>({
         url: `${BASE_URL}/refresh`,
         method: 'POST',
-        data: payload
+        data: payload ?? {}
     });
 }
 

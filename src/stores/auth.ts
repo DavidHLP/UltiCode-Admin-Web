@@ -153,14 +153,12 @@ export const useAuthStore = defineStore('auth', {
             return response.user;
         },
         async refresh() {
-            if (!this.refreshToken) {
-                throw new Error('没有可用的刷新令牌');
-            }
             if (this.refreshTokenExpired) {
                 this.clearAuthData();
                 throw new Error('刷新令牌已过期，请重新登录');
             }
-            const response = await refreshTokenRequest({ refreshToken: this.refreshToken });
+            const payload = this.refreshToken ? { refreshToken: this.refreshToken } : undefined;
+            const response = await refreshTokenRequest(payload);
             this.applyAuthResponse(response);
             return response;
         },

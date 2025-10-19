@@ -40,8 +40,8 @@ let refreshPromise: Promise<void> | null = null;
 
 async function refreshAccessToken(): Promise<void> {
     const authStore = useAuthStore();
-    if (!authStore.refreshToken) {
-        throw new Error('缺少刷新令牌');
+    if (authStore.refreshTokenExpiresAt === null) {
+        throw new Error('缺少刷新上下文');
     }
     if (authStore.refreshTokenExpired) {
         authStore.clearAuthData();
@@ -100,6 +100,8 @@ const service: AxiosInstance = axios.create({
     timeout: 50000
 });
 
+service.defaults.withCredentials = true;
+
 service.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
         const authStore = useAuthStore();
@@ -153,11 +155,13 @@ service.interceptors.response.use(
         if (status === 401) {
             const originalConfig = error.config as RetryableRequestConfig | undefined;
             const authStore = useAuthStore();
+            const hasRefreshContext = authStore.refreshTokenExpiresAt !== null;
             if (
                 originalConfig &&
                 !originalConfig._retry &&
                 !shouldSkipRefresh(originalConfig.url) &&
-                authStore.refreshToken
+                hasRefreshContext &&
+                !authStore.refreshTokenExpired
             ) {
                 originalConfig._retry = true;
                 try {
