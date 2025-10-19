@@ -24,6 +24,16 @@ const model = ref([
             { label: '语言管理', icon: 'pi pi-fw pi-code', to: '/admin/languages' },
             { label: '标签管理', icon: 'pi pi-fw pi-tags', to: '/admin/tags' }
         ]
+    },
+    {
+        label: '社区互动',
+        items: [
+            { label: '评论管理', icon: 'pi pi-fw pi-comments', to: '/admin/interaction/comments' },
+            { label: '内容审核', icon: 'pi pi-fw pi-shield', to: '/admin/interaction/moderation' },
+            { label: '敏感词库', icon: 'pi pi-fw pi-exclamation-triangle', to: '/admin/interaction/sensitive-words' },
+            { label: '互动反馈', icon: 'pi pi-fw pi-thumbs-up', to: '/admin/interaction/reactions' },
+            { label: '用户收藏', icon: 'pi pi-fw pi-bookmark', to: '/admin/interaction/bookmarks' }
+        ]
     }
 ]);
 </script>

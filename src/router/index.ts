@@ -81,6 +81,51 @@ const routes: RouteRecordRaw[] = [
                 }
             },
             {
+                path: '/admin/interaction/comments',
+                name: 'interactionComments',
+                component: () => import('@/views/interaction/CommentList.vue'),
+                meta: {
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '社区互动' }, { label: '评论管理' }]
+                }
+            },
+            {
+                path: '/admin/interaction/moderation',
+                name: 'interactionModeration',
+                component: () => import('@/views/interaction/ModerationTaskList.vue'),
+                meta: {
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '社区互动' }, { label: '内容审核' }]
+                }
+            },
+            {
+                path: '/admin/interaction/sensitive-words',
+                name: 'interactionSensitiveWords',
+                component: () => import('@/views/interaction/SensitiveWordList.vue'),
+                meta: {
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '社区互动' }, { label: '敏感词库' }]
+                }
+            },
+            {
+                path: '/admin/interaction/reactions',
+                name: 'interactionReactions',
+                component: () => import('@/views/interaction/ReactionList.vue'),
+                meta: {
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '社区互动' }, { label: '互动反馈' }]
+                }
+            },
+            {
+                path: '/admin/interaction/bookmarks',
+                name: 'interactionBookmarks',
+                component: () => import('@/views/interaction/BookmarkList.vue'),
+                meta: {
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '社区互动' }, { label: '用户收藏' }]
+                }
+            },
+            {
                 path: '/admin/problems/new',
                 name: 'adminProblemsCreate',
                 component: () => import('@/views/admin/ProblemEdit.vue'),
