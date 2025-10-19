@@ -694,40 +694,61 @@ function renderJsonPreview(json?: string | null) {
     </section>
 
     <Dialog v-model:visible="datasetDialogVisible" :header="datasetDialogMode === 'create' ? '新增数据集' : '编辑数据集'" modal
-        class="dialog-md">
-        <div class="grid form-grid">
-            <div class="col-12">
-                <label class="field-label">名称</label>
-                <InputText v-model="datasetForm.name" placeholder="如 default" class="w-full" />
-            </div>
-            <div class="col-12 md:col-6">
-                <label class="field-label">校验器类型</label>
-                <Dropdown v-model="datasetForm.checkerType" :options="checkerTypeOptions" optionLabel="label"
-                    optionValue="value" class="w-full" />
-            </div>
-            <div class="col-12 md:col-6">
-                <label class="field-label">激活状态</label>
-                <div class="flex align-items-center gap-2">
-                    <InputSwitch v-model="datasetForm.isActive" />
-                    <span>{{ datasetForm.isActive ? '激活' : '未激活' }}</span>
+        class="dialog-md"
+        :pt="{ content: { class: 'dialog-content' }, header: { class: 'dialog-header' }, footer: { class: 'dialog-footer' } }">
+        <div class="dialog-body">
+            <section class="dialog-section">
+                <div class="dialog-section__header">
+                    <h4 class="dialog-section__title">基础信息</h4>
+                    <p class="dialog-section__description">为数据集设置名称并控制其激活状态。</p>
                 </div>
-            </div>
-            <div v-if="datasetForm.checkerType === 'custom'" class="col-12">
-                <label class="field-label">校验器文件 ID</label>
-                <InputNumber v-model="datasetForm.checkerFileId" :useGrouping="false" :allowEmpty="true"
-                    class="w-full" />
-                <small class="text-xs text-color-secondary">填写上传至文件管理的校验器文件 ID。</small>
-            </div>
-            <div v-if="datasetForm.checkerType === 'float'" class="col-12 md:col-6">
-                <label class="field-label">绝对误差</label>
-                <InputNumber v-model="datasetForm.floatAbsTol" :minFractionDigits="0" :maxFractionDigits="6"
-                    :allowEmpty="true" class="w-full" />
-            </div>
-            <div v-if="datasetForm.checkerType === 'float'" class="col-12 md:col-6">
-                <label class="field-label">相对误差</label>
-                <InputNumber v-model="datasetForm.floatRelTol" :minFractionDigits="0" :maxFractionDigits="6"
-                    :allowEmpty="true" class="w-full" />
-            </div>
+                <div class="dialog-section__grid two-col">
+                    <div class="form-field span-2">
+                        <label class="field-label">名称</label>
+                        <InputText v-model="datasetForm.name" placeholder="如 default" class="w-full" />
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label">校验器类型</label>
+                        <Dropdown v-model="datasetForm.checkerType" :options="checkerTypeOptions" optionLabel="label"
+                            optionValue="value" class="w-full" />
+                    </div>
+                    <div class="form-field toggle-field">
+                        <label class="field-label">激活状态</label>
+                        <div class="toggle-inline">
+                            <InputSwitch v-model="datasetForm.isActive" />
+                            <span>{{ datasetForm.isActive ? '激活' : '未激活' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dialog-section">
+                <div class="dialog-section__header">
+                    <h4 class="dialog-section__title">校验器配置</h4>
+                    <p class="dialog-section__description">根据校验器类型填写对应的校验参数。</p>
+                </div>
+                <div class="dialog-section__grid two-col">
+                    <div v-if="datasetForm.checkerType === 'custom'" class="form-field span-2">
+                        <label class="field-label">校验器文件 ID</label>
+                        <InputNumber v-model="datasetForm.checkerFileId" :useGrouping="false" :allowEmpty="true"
+                            class="w-full" />
+                        <small class="field-hint">填写上传至文件管理的校验器文件 ID。</small>
+                    </div>
+                    <div v-if="datasetForm.checkerType === 'float'" class="form-field">
+                        <label class="field-label">绝对误差</label>
+                        <InputNumber v-model="datasetForm.floatAbsTol" :minFractionDigits="0" :maxFractionDigits="6"
+                            :allowEmpty="true" class="w-full" />
+                    </div>
+                    <div v-if="datasetForm.checkerType === 'float'" class="form-field">
+                        <label class="field-label">相对误差</label>
+                        <InputNumber v-model="datasetForm.floatRelTol" :minFractionDigits="0" :maxFractionDigits="6"
+                            :allowEmpty="true" class="w-full" />
+                    </div>
+                </div>
+                <p v-if="datasetForm.checkerType === 'text'" class="field-note">文本比较无需额外配置。</p>
+                <p v-if="datasetForm.checkerType === 'custom'" class="field-note">使用自定义校验器时需确保文件 ID 指向已上传的校验脚本。</p>
+                <p v-if="datasetForm.checkerType === 'float'" class="field-note">浮点比较建议同时设置绝对误差与相对误差，以更准确地控制判题精度。</p>
+            </section>
         </div>
         <template #footer>
             <Button label="取消" text @click="datasetDialogVisible = false" />
@@ -736,23 +757,32 @@ function renderJsonPreview(json?: string | null) {
     </Dialog>
 
     <Dialog v-model:visible="groupDialogVisible" :header="groupDialogMode === 'create' ? '新增测试组' : '编辑测试组'" modal
-        class="dialog-sm">
-        <div class="grid form-grid">
-            <div class="col-12">
-                <label class="field-label">名称</label>
-                <InputText v-model="groupForm.name" placeholder="如 samples" class="w-full" />
-            </div>
-            <div class="col-12 md:col-6">
-                <label class="field-label">是否样例</label>
-                <div class="flex align-items-center gap-2">
-                    <InputSwitch v-model="groupForm.isSample" />
-                    <span>{{ groupForm.isSample ? '是' : '否' }}</span>
+        class="dialog-sm"
+        :pt="{ content: { class: 'dialog-content' }, header: { class: 'dialog-header' }, footer: { class: 'dialog-footer' } }">
+        <div class="dialog-body">
+            <section class="dialog-section">
+                <div class="dialog-section__header">
+                    <h4 class="dialog-section__title">测试组信息</h4>
+                    <p class="dialog-section__description">设置测试组名称、样例标记与权重比例。</p>
                 </div>
-            </div>
-            <div class="col-12 md:col-6">
-                <label class="field-label">权重</label>
-                <InputNumber v-model="groupForm.weight" :useGrouping="false" :min="1" class="w-full" />
-            </div>
+                <div class="dialog-section__grid two-col">
+                    <div class="form-field span-2">
+                        <label class="field-label">名称</label>
+                        <InputText v-model="groupForm.name" placeholder="如 samples" class="w-full" />
+                    </div>
+                    <div class="form-field toggle-field">
+                        <label class="field-label">是否样例</label>
+                        <div class="toggle-inline">
+                            <InputSwitch v-model="groupForm.isSample" />
+                            <span>{{ groupForm.isSample ? '是' : '否' }}</span>
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label">权重</label>
+                        <InputNumber v-model="groupForm.weight" :useGrouping="false" :min="1" class="w-full" />
+                    </div>
+                </div>
+            </section>
         </div>
         <template #footer>
             <Button label="取消" text @click="groupDialogVisible = false" />
@@ -761,40 +791,71 @@ function renderJsonPreview(json?: string | null) {
     </Dialog>
 
     <Dialog v-model:visible="testcaseDialogVisible" :header="testcaseDialogMode === 'create' ? '新增测试用例' : '编辑测试用例'"
-        modal class="dialog-lg">
-        <div class="grid form-grid">
-            <div class="col-12 md:col-4">
-                <label class="field-label">顺序</label>
-                <InputNumber v-model="testcaseForm.orderIndex" :useGrouping="false" class="w-full" />
-            </div>
-            <div class="col-12 md:col-4">
-                <label class="field-label">分值</label>
-                <InputNumber v-model="testcaseForm.score" :useGrouping="false" class="w-full" />
-            </div>
-            <div class="col-12 md:col-4">
-                <label class="field-label">输出类型 (可选)</label>
-                <InputText v-model="testcaseForm.outputType" placeholder="如 json / text" class="w-full" />
-            </div>
-            <div class="col-12 md:col-6">
-                <label class="field-label">输入文件 ID (可选)</label>
-                <InputNumber v-model="testcaseForm.inputFileId" :useGrouping="false" :allowEmpty="true"
-                    class="w-full" />
-            </div>
-            <div class="col-12 md:col-6">
-                <label class="field-label">输出文件 ID (可选)</label>
-                <InputNumber v-model="testcaseForm.outputFileId" :useGrouping="false" :allowEmpty="true"
-                    class="w-full" />
-            </div>
-            <div class="col-12">
-                <label class="field-label">输入 JSON (可选)</label>
-                <Textarea v-model="testcaseForm.inputJson" autoResize rows="4" placeholder="JSON 字符串，留空则使用文件"
-                    class="w-full" />
-            </div>
-            <div class="col-12">
-                <label class="field-label">输出 JSON (可选)</label>
-                <Textarea v-model="testcaseForm.outputJson" autoResize rows="4" placeholder="JSON 字符串，留空则使用文件"
-                    class="w-full" />
-            </div>
+        modal class="dialog-lg"
+        :pt="{ content: { class: 'dialog-content' }, header: { class: 'dialog-header' }, footer: { class: 'dialog-footer' } }">
+        <div class="dialog-body">
+            <section class="dialog-section">
+                <div class="dialog-section__header">
+                    <h4 class="dialog-section__title">基础信息</h4>
+                    <p class="dialog-section__description">控制测试用例的执行顺序、分值与输出类型。</p>
+                </div>
+                <div class="dialog-section__grid three-col">
+                    <div class="form-field">
+                        <label class="field-label">顺序</label>
+                        <InputNumber v-model="testcaseForm.orderIndex" :useGrouping="false" class="w-full" />
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label">分值</label>
+                        <InputNumber v-model="testcaseForm.score" :useGrouping="false" class="w-full" />
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label">输出类型 (可选)</label>
+                        <InputText v-model="testcaseForm.outputType" placeholder="如 json / text" class="w-full" />
+                        <small class="field-hint">用于标识输出格式，空值默认视为普通文本。</small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dialog-section">
+                <div class="dialog-section__header">
+                    <h4 class="dialog-section__title">文件关联</h4>
+                    <p class="dialog-section__description">可直接引用已上传的输入/输出文件编号。</p>
+                </div>
+                <div class="dialog-section__grid two-col">
+                    <div class="form-field">
+                        <label class="field-label">输入文件 ID (可选)</label>
+                        <InputNumber v-model="testcaseForm.inputFileId" :useGrouping="false" :allowEmpty="true"
+                            class="w-full" />
+                        <small class="field-hint">留空则仅依赖 JSON 内容或上传记录。</small>
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label">输出文件 ID (可选)</label>
+                        <InputNumber v-model="testcaseForm.outputFileId" :useGrouping="false" :allowEmpty="true"
+                            class="w-full" />
+                        <small class="field-hint">不同测试可能共享同一个输出文件。</small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dialog-section">
+                <div class="dialog-section__header">
+                    <h4 class="dialog-section__title">JSON 内容 (可选)</h4>
+                    <p class="dialog-section__description">如无需文件，可直接粘贴输入输出 JSON 数据。</p>
+                </div>
+                <div class="dialog-section__grid two-col">
+                    <div class="form-field span-2">
+                        <label class="field-label">输入 JSON</label>
+                        <Textarea v-model="testcaseForm.inputJson" autoResize rows="4" placeholder="JSON 字符串，留空则使用文件"
+                            class="w-full" />
+                    </div>
+                    <div class="form-field span-2">
+                        <label class="field-label">输出 JSON</label>
+                        <Textarea v-model="testcaseForm.outputJson" autoResize rows="4" placeholder="JSON 字符串，留空则使用文件"
+                            class="w-full" />
+                    </div>
+                </div>
+                <p class="field-note">JSON 内容与文件上传可二选一；若两者均存在，则以 JSON 优先。</p>
+            </section>
         </div>
         <template #footer>
             <Button label="取消" text @click="testcaseDialogVisible = false" />
@@ -1113,10 +1174,125 @@ function renderJsonPreview(json?: string | null) {
     width: min(680px, 95vw);
 }
 
+.dialog-header {
+    padding: 1.2rem 1.5rem 0;
+    border-bottom: none;
+}
+
+.dialog-content {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.dialog-footer {
+    padding: 0 1.5rem 1.25rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.dialog-section {
+    border: 1px solid var(--surface-border);
+    border-radius: 10px;
+    padding: 1rem;
+    background: var(--surface-card);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.dialog-section__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.dialog-section__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.dialog-section__description {
+    font-size: 0.85rem;
+    color: var(--text-color-secondary);
+}
+
+.dialog-section__grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.dialog-section__grid.two-col {
+    grid-template-columns: 1fr;
+}
+
+.dialog-section__grid.three-col {
+    grid-template-columns: 1fr;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.toggle-field {
+    align-items: flex-start;
+}
+
+.toggle-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.field-hint {
+    font-size: 0.75rem;
+    color: var(--text-color-secondary);
+}
+
+.field-note {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+}
+
+.span-2 {
+    grid-column: span 1;
+}
+
+.span-3 {
+    grid-column: span 1;
+}
+
 @media (min-width: 992px) {
     .metadata-card {
         position: sticky;
         top: 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .dialog-section__grid.two-col {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dialog-section__grid.three-col {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .span-2 {
+        grid-column: span 2;
+    }
+
+    .span-3 {
+        grid-column: span 3;
     }
 }
 </style>
