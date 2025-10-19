@@ -123,6 +123,7 @@ const form = reactive<ProblemForm>({
     timeLimitMs: null,
     memoryLimitKb: null,
     isPublic: true,
+    activeDatasetId: null,
     tagIds: [],
     statements: [],
     languageConfigs: [],
@@ -260,6 +261,7 @@ function resetForm() {
     form.timeLimitMs = 1000;
     form.memoryLimitKb = 262144;
     form.isPublic = true;
+    form.activeDatasetId = null;
     form.tagIds = [];
     form.statements = [createEmptyStatement()];
     form.languageConfigs = [];
@@ -289,6 +291,7 @@ function fillForm(detail: ProblemDetail) {
     form.timeLimitMs = detail.timeLimitMs ?? null;
     form.memoryLimitKb = detail.memoryLimitKb ?? null;
     form.isPublic = detail.isPublic ?? true;
+    form.activeDatasetId = detail.activeDatasetId ?? null;
     form.tagIds = detail.tags?.map((tag) => tag.id) ?? [];
     form.statements =
         detail.statements?.length

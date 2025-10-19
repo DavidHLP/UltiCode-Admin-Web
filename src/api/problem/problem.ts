@@ -55,6 +55,7 @@ export interface ProblemDetail {
     timeLimitMs?: number | null;
     memoryLimitKb?: number | null;
     isPublic: boolean;
+    activeDatasetId?: number | null;
     meta?: Record<string, unknown> | null;
     createdAt?: string | null;
     updatedAt?: string | null;

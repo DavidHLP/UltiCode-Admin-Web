@@ -27,6 +27,7 @@ export interface ProblemForm {
     timeLimitMs: number | null;
     memoryLimitKb: number | null;
     isPublic: boolean;
+    activeDatasetId: number | null;
     tagIds: number[];
     statements: StatementForm[];
     languageConfigs: LanguageConfigForm[];

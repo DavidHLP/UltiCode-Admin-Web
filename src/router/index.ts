@@ -6,14 +6,15 @@ const routes: RouteRecordRaw[] = [
     {
         path: '/',
         component: AppLayout,
-        meta: {requiresAuth: true},
+        meta: { requiresAuth: true },
         children: [
             {
                 path: '/',
                 name: 'dashboard',
                 component: () => import('@/views/Dashboard.vue'),
                 meta: {
-                    breadcrumb: [{label: '仪表盘'}]
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '仪表盘' }]
                 }
             },
             {
@@ -21,7 +22,8 @@ const routes: RouteRecordRaw[] = [
                 name: 'adminUsers',
                 component: () => import('@/views/admin/UserList.vue'),
                 meta: {
-                    breadcrumb: [{label: '权限管理'}, {label: '用户管理'}]
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '权限管理' }, { label: '用户管理' }]
                 }
             },
             {
@@ -29,7 +31,8 @@ const routes: RouteRecordRaw[] = [
                 name: 'adminRoles',
                 component: () => import('@/views/admin/RoleList.vue'),
                 meta: {
-                    breadcrumb: [{label: '权限管理'}, {label: '角色管理'}]
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '权限管理' }, { label: '角色管理' }]
                 }
             },
             {
@@ -37,7 +40,8 @@ const routes: RouteRecordRaw[] = [
                 name: 'adminProblems',
                 component: () => import('@/views/admin/ProblemList.vue'),
                 meta: {
-                    breadcrumb: [{label: '题库管理'}, {label: '题目管理'}]
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '题库管理' }, { label: '题目管理' }]
                 }
             },
             {
@@ -45,7 +49,8 @@ const routes: RouteRecordRaw[] = [
                 name: 'adminCategories',
                 component: () => import('@/views/admin/CategoryList.vue'),
                 meta: {
-                    breadcrumb: [{label: '题库管理'}, {label: '分类管理'}]
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '题库管理' }, { label: '分类管理' }]
                 }
             },
             {
@@ -53,7 +58,8 @@ const routes: RouteRecordRaw[] = [
                 name: 'adminDifficulties',
                 component: () => import('@/views/admin/DifficultyList.vue'),
                 meta: {
-                    breadcrumb: [{label: '题库管理'}, {label: '难度管理'}]
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '题库管理' }, { label: '难度管理' }]
                 }
             },
             {
@@ -61,7 +67,8 @@ const routes: RouteRecordRaw[] = [
                 name: 'adminLanguages',
                 component: () => import('@/views/admin/LanguageList.vue'),
                 meta: {
-                    breadcrumb: [{label: '题库管理'}, {label: '语言管理'}]
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '题库管理' }, { label: '语言管理' }]
                 }
             },
             {
@@ -69,7 +76,8 @@ const routes: RouteRecordRaw[] = [
                 name: 'adminTags',
                 component: () => import('@/views/admin/TagList.vue'),
                 meta: {
-                    breadcrumb: [{label: '题库管理'}, {label: '标签管理'}]
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '题库管理' }, { label: '标签管理' }]
                 }
             },
             {
@@ -81,24 +89,53 @@ const routes: RouteRecordRaw[] = [
                     {
                         path: 'basic',
                         name: 'adminProblemsCreateBasic',
-                        component: () => import('@/views/admin/problem-editor/ProblemEditorBasics.vue')
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorBasics.vue'),
+                        meta: {
+                            requiresAuth: true,
+                            breadcrumb: [
+                                { label: '题库管理' },
+                                { label: '题目管理', to: '/admin/problems' },
+                                { label: '新建题目' },
+                                { label: '基本信息' }
+                            ]
+                        }
                     },
                     {
                         path: 'statements',
                         name: 'adminProblemsCreateStatements',
-                        component: () => import('@/views/admin/problem-editor/ProblemEditorStatements.vue')
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorStatements.vue'),
+                        meta: {
+                            requiresAuth: true,
+                            breadcrumb: [
+                                { label: '题库管理' },
+                                { label: '题目管理', to: '/admin/problems' },
+                                { label: '新建题目' },
+                                { label: '题面内容' }
+                            ]
+                        }
                     },
                     {
                         path: 'configurations',
                         name: 'adminProblemsCreateConfigurations',
-                        component: () => import('@/views/admin/problem-editor/ProblemEditorConfigurations.vue')
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorConfigurations.vue'),
+                        alias: ['datasets'],
+                        meta: {
+                            requiresAuth: true,
+                            breadcrumb: [
+                                { label: '题库管理' },
+                                { label: '题目管理', to: '/admin/problems' },
+                                { label: '新建题目' },
+                                { label: '判题配置' }
+                            ]
+                        }
                     }
                 ],
                 meta: {
+                    requiresAuth: true,
                     breadcrumb: [
-                        {label: '题库管理'},
-                        {label: '题目管理', to: '/admin/problems'},
-                        {label: '新建题目'}
+                        { label: '题库管理' },
+                        { label: '题目管理', to: '/admin/problems' },
+                        { label: '新建题目' }
                     ]
                 }
             },
@@ -107,28 +144,58 @@ const routes: RouteRecordRaw[] = [
                 name: 'adminProblemsEdit',
                 component: () => import('@/views/admin/ProblemEdit.vue'),
                 redirect: { name: 'adminProblemsEditBasic' },
+                props: true,
                 children: [
                     {
                         path: 'basic',
                         name: 'adminProblemsEditBasic',
-                        component: () => import('@/views/admin/problem-editor/ProblemEditorBasics.vue')
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorBasics.vue'),
+                        meta: {
+                            requiresAuth: true,
+                            breadcrumb: [
+                                { label: '题库管理' },
+                                { label: '题目管理', to: '/admin/problems' },
+                                { label: '编辑题目' },
+                                { label: '基本信息' }
+                            ]
+                        }
                     },
                     {
                         path: 'statements',
                         name: 'adminProblemsEditStatements',
-                        component: () => import('@/views/admin/problem-editor/ProblemEditorStatements.vue')
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorStatements.vue'),
+                        meta: {
+                            requiresAuth: true,
+                            breadcrumb: [
+                                { label: '题库管理' },
+                                { label: '题目管理', to: '/admin/problems' },
+                                { label: '编辑题目' },
+                                { label: '题面内容' }
+                            ]
+                        }
                     },
                     {
                         path: 'configurations',
                         name: 'adminProblemsEditConfigurations',
-                        component: () => import('@/views/admin/problem-editor/ProblemEditorConfigurations.vue')
+                        component: () => import('@/views/admin/problem-editor/ProblemEditorConfigurations.vue'),
+                        alias: ['datasets'],
+                        meta: {
+                            requiresAuth: true,
+                            breadcrumb: [
+                                { label: '题库管理' },
+                                { label: '题目管理', to: '/admin/problems' },
+                                { label: '编辑题目' },
+                                { label: '判题配置' }
+                            ]
+                        }
                     }
                 ],
                 meta: {
+                    requiresAuth: true,
                     breadcrumb: [
-                        {label: '题库管理'},
-                        {label: '题目管理', to: '/admin/problems'},
-                        {label: '编辑题目'}
+                        { label: '题库管理' },
+                        { label: '题目管理', to: '/admin/problems' },
+                        { label: '编辑题目' }
                     ]
                 }
             },
