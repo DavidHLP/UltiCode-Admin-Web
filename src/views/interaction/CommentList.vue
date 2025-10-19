@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type {
     CommentDetail,
-    CommentSummary,
     CommentQuery,
     CommentStatusPayload,
+    CommentSummary,
     CommentUpdatePayload
 } from '@/api/interaction/comments';
 import {
@@ -305,15 +305,14 @@ function formatReactionStats(stats: Record<string, number>) {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText
-                            v-model="keyword"
-                            placeholder="搜索内容或备注"
-                            style="min-width: 16rem"
-                            @keyup.enter="onSearch"
-                        />
-                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="审核状态" style="width: 10rem" />
-                        <Dropdown v-model="entityTypeFilter" :options="entityTypeOptions" optionLabel="label" optionValue="value" placeholder="实体类型" style="width: 10rem" />
-                        <Dropdown v-model="moderationLevelFilter" :options="levelOptions" optionLabel="label" optionValue="value" placeholder="风险等级" style="width: 10rem" />
+                        <InputText v-model="keyword" placeholder="搜索内容或备注" style="min-width: 16rem"
+                            @keyup.enter="onSearch" />
+                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label"
+                            optionValue="value" placeholder="审核状态" style="width: 10rem" />
+                        <Dropdown v-model="entityTypeFilter" :options="entityTypeOptions" optionLabel="label"
+                            optionValue="value" placeholder="实体类型" style="width: 10rem" />
+                        <Dropdown v-model="moderationLevelFilter" :options="levelOptions" optionLabel="label"
+                            optionValue="value" placeholder="风险等级" style="width: 10rem" />
                         <InputNumber v-model="entityIdFilter" placeholder="实体ID" :min="1" inputId="entity-id-filter" />
                         <InputNumber v-model="userIdFilter" placeholder="用户ID" :min="1" inputId="user-id-filter" />
                         <div class="flex items-center gap-2">
@@ -327,19 +326,9 @@ function formatReactionStats(stats: Record<string, number>) {
                     </div>
                 </div>
 
-                <DataTable
-                    :value="comments"
-                    :loading="loading"
-                    :rows="size"
-                    :lazy="true"
-                    :paginator="true"
-                    :totalRecords="total"
-                    dataKey="id"
-                    :rowsPerPageOptions="[10, 20, 50]"
-                    :first="paginationFirst"
-                    responsiveLayout="scroll"
-                    @page="onPageChange"
-                >
+                <DataTable :value="comments" :loading="loading" :rows="size" :lazy="true" :paginator="true"
+                    :totalRecords="total" dataKey="id" :rowsPerPageOptions="[10, 20, 50]" :first="paginationFirst"
+                    responsiveLayout="scroll" @page="onPageChange">
                     <Column field="id" header="ID" sortable />
                     <Column field="entityType" header="类型" sortable />
                     <Column field="entityId" header="实体ID" sortable />
@@ -348,12 +337,14 @@ function formatReactionStats(stats: Record<string, number>) {
                     <Column field="moderationLevel" header="风险" sortable />
                     <Column field="sensitiveFlag" header="敏感">
                         <template #body="slotProps">
-                            <Tag :value="slotProps.data.sensitiveFlag ? '是' : '否'" :severity="slotProps.data.sensitiveFlag ? 'danger' : 'success'" />
+                            <Tag :value="slotProps.data.sensitiveFlag ? '是' : '否'"
+                                :severity="slotProps.data.sensitiveFlag ? 'danger' : 'success'" />
                         </template>
                     </Column>
                     <Column field="contentPreview" header="内容预览" :style="{ maxWidth: '18rem' }">
                         <template #body="slotProps">
-                            <span class="whitespace-nowrap text-overflow-ellipsis overflow-hidden block" style="max-width: 18rem">{{ slotProps.data.contentPreview }}</span>
+                            <span class="whitespace-nowrap text-overflow-ellipsis overflow-hidden block"
+                                style="max-width: 18rem">{{ slotProps.data.contentPreview }}</span>
                         </template>
                     </Column>
                     <Column field="createdAt" header="创建时间" sortable />
@@ -361,9 +352,12 @@ function formatReactionStats(stats: Record<string, number>) {
                     <Column header="操作">
                         <template #body="slotProps">
                             <div class="flex gap-2">
-                                <Button label="详情" icon="pi pi-search" size="small" @click="openDetail(slotProps.data)" />
-                                <Button label="审核" icon="pi pi-check" severity="info" size="small" @click="openStatusDialog(slotProps.data)" />
-                                <Button label="编辑" icon="pi pi-pencil" severity="secondary" size="small" @click="openEditDialog(slotProps.data)" />
+                                <Button label="详情" icon="pi pi-search" size="small"
+                                    @click="openDetail(slotProps.data)" />
+                                <Button label="审核" icon="pi pi-check" severity="info" size="small"
+                                    @click="openStatusDialog(slotProps.data)" />
+                                <Button label="编辑" icon="pi pi-pencil" severity="secondary" size="small"
+                                    @click="openEditDialog(slotProps.data)" />
                             </div>
                         </template>
                     </Column>
@@ -381,20 +375,23 @@ function formatReactionStats(stats: Record<string, number>) {
         <template v-else-if="currentComment">
             <div class="mb-3">
                 <div class="font-medium mb-1">评论内容</div>
-                <pre class="whitespace-pre-wrap bg-surface-200 dark:bg-surface-800 p-3 border-round">{{ currentComment.contentMd }}</pre>
+                <pre
+                    class="whitespace-pre-wrap bg-surface-200 dark:bg-surface-800 p-3 border-round">{{ currentComment.contentMd }}</pre>
             </div>
             <div class="grid">
                 <div class="col-12 md:col-6">
                     <p><strong>状态：</strong>{{ currentComment.status }}</p>
                     <p><strong>风险等级：</strong>{{ currentComment.moderationLevel ?? '-' }}</p>
-                    <p><strong>敏感词：</strong>{{ currentComment.sensitiveHits?.length ? currentComment.sensitiveHits.join('、') : '无' }}</p>
+                    <p><strong>敏感词：</strong>{{ currentComment.sensitiveHits?.length ?
+                        currentComment.sensitiveHits.join('、') : '无' }}</p>
                     <p><strong>备注：</strong>{{ currentComment.moderationNotes ?? '-' }}</p>
                 </div>
                 <div class="col-12 md:col-6">
                     <p><strong>用户ID：</strong>{{ currentComment.userId }}</p>
                     <p><strong>实体：</strong>{{ currentComment.entityType }} #{{ currentComment.entityId }}</p>
                     <p><strong>反应：</strong>{{ formatReactionStats(currentComment.reactionStats) || '无' }}</p>
-                    <p><strong>最后审核人：</strong>{{ currentComment.lastModeratedBy ?? '-' }}，时间：{{ currentComment.lastModeratedAt ?? '-' }}</p>
+                    <p><strong>最后审核人：</strong>{{ currentComment.lastModeratedBy ?? '-' }}，时间：{{
+                        currentComment.lastModeratedAt ?? '-' }}</p>
                 </div>
             </div>
         </template>
@@ -406,8 +403,10 @@ function formatReactionStats(stats: Record<string, number>) {
     <Dialog v-model:visible="statusDialogVisible" modal header="审核评论" :style="{ width: '32rem' }">
         <template v-if="currentComment">
             <div class="flex flex-column gap-3">
-                <Dropdown v-model="statusForm.status" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="选择状态" />
-                <Dropdown v-model="statusForm.moderationLevel" :options="levelOptions" optionLabel="label" optionValue="value" placeholder="风险等级" />
+                <Dropdown v-model="statusForm.status" :options="statusOptions" optionLabel="label" optionValue="value"
+                    placeholder="选择状态" />
+                <Dropdown v-model="statusForm.moderationLevel" :options="levelOptions" optionLabel="label"
+                    optionValue="value" placeholder="风险等级" />
                 <Textarea v-model="statusForm.moderationNotes" placeholder="备注" rows="4" autoResize />
                 <div class="flex justify-end gap-2 mt-3">
                     <Button label="取消" severity="secondary" @click="statusDialogVisible = false" />
@@ -423,7 +422,8 @@ function formatReactionStats(stats: Record<string, number>) {
     <Dialog v-model:visible="editDialogVisible" modal header="编辑评论" :style="{ width: '50vw' }">
         <template v-if="currentComment">
             <div class="flex flex-column gap-3">
-                <Dropdown v-model="editForm.visibility" :options="visibilityOptions" optionLabel="label" optionValue="value" placeholder="可见性" />
+                <Dropdown v-model="editForm.visibility" :options="visibilityOptions" optionLabel="label"
+                    optionValue="value" placeholder="可见性" />
                 <Textarea v-model="editForm.contentMd" placeholder="评论内容 (Markdown)" rows="8" autoResize />
                 <Textarea v-model="editForm.contentRendered" placeholder="渲染内容 (可选)" rows="4" autoResize />
                 <div class="flex justify-end gap-2 mt-3">
