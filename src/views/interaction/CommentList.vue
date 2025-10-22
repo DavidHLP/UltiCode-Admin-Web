@@ -1,18 +1,6 @@
 <script setup lang="ts">
-import type {
-    CommentDetail,
-    CommentQuery,
-    CommentStatusPayload,
-    CommentSummary,
-    CommentUpdatePayload
-} from '@/api/interaction/comments';
-import {
-    CommentStatus,
-    fetchComment,
-    fetchComments,
-    updateComment,
-    updateCommentStatus
-} from '@/api/interaction/comments';
+import type { CommentDetail, CommentSummary, CommentQuery, CommentStatusPayload, CommentUpdatePayload } from '@/api/interaction/comments';
+import { CommentStatus, fetchComment, fetchComments, updateComment, updateCommentStatus } from '@/api/interaction/comments';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 
@@ -94,6 +82,64 @@ const visibilityOptions: ModeOption[] = [
 ];
 
 const paginationFirst = computed(() => (page.value - 1) * size.value);
+const sensitiveHitsList = computed<string[]>(() => currentComment.value?.sensitiveHits ?? []);
+const reactionEntries = computed<[string, number][]>(() => {
+    if (!currentComment.value?.reactionStats) {
+        return [];
+    }
+    return Object.entries(currentComment.value.reactionStats as Record<string, number>);
+});
+
+type TagSeverity = 'success' | 'info' | 'warning' | 'danger' | undefined;
+
+function getStatusLabel(status: CommentStatus | string | undefined | null) {
+    if (!status) {
+        return '-';
+    }
+    return statusOptions.find((option) => option.value === status)?.label ?? String(status);
+}
+
+function getLevelLabel(level: string | undefined | null) {
+    if (!level) {
+        return '-';
+    }
+    return levelOptions.find((option) => option.value === level)?.label ?? level;
+}
+
+function getVisibilityLabel(visibility: string | undefined | null) {
+    if (!visibility) {
+        return '-';
+    }
+    return visibilityOptions.find((option) => option.value === visibility)?.label ?? visibility;
+}
+
+function getStatusSeverity(status: CommentStatus | string | undefined | null): TagSeverity {
+    switch (status) {
+        case CommentStatus.Approved:
+            return 'success';
+        case CommentStatus.Pending:
+            return 'warning';
+        case CommentStatus.Rejected:
+            return 'danger';
+        case CommentStatus.Hidden:
+            return 'info';
+        default:
+            return 'info';
+    }
+}
+
+function getLevelSeverity(level: string | undefined | null): TagSeverity {
+    switch (level) {
+        case 'low':
+            return 'success';
+        case 'medium':
+            return 'warning';
+        case 'high':
+            return 'danger';
+        default:
+            return 'info';
+    }
+}
 
 onMounted(() => {
     loadComments();
@@ -291,12 +337,6 @@ async function submitEdit() {
 function closeDetail() {
     detailDialogVisible.value = false;
 }
-
-function formatReactionStats(stats: Record<string, number>) {
-    return Object.entries(stats || {})
-        .map(([key, value]) => `${key}: ${value}`)
-        .join('、');
-}
 </script>
 
 <template>
@@ -305,14 +345,10 @@ function formatReactionStats(stats: Record<string, number>) {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索内容或备注" style="min-width: 16rem"
-                            @keyup.enter="onSearch" />
-                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label"
-                            optionValue="value" placeholder="审核状态" style="width: 10rem" />
-                        <Dropdown v-model="entityTypeFilter" :options="entityTypeOptions" optionLabel="label"
-                            optionValue="value" placeholder="实体类型" style="width: 10rem" />
-                        <Dropdown v-model="moderationLevelFilter" :options="levelOptions" optionLabel="label"
-                            optionValue="value" placeholder="风险等级" style="width: 10rem" />
+                        <InputText v-model="keyword" placeholder="搜索内容或备注" style="min-width: 16rem" @keyup.enter="onSearch" />
+                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="审核状态" style="width: 10rem" />
+                        <Dropdown v-model="entityTypeFilter" :options="entityTypeOptions" optionLabel="label" optionValue="value" placeholder="实体类型" style="width: 10rem" />
+                        <Dropdown v-model="moderationLevelFilter" :options="levelOptions" optionLabel="label" optionValue="value" placeholder="风险等级" style="width: 10rem" />
                         <InputNumber v-model="entityIdFilter" placeholder="实体ID" :min="1" inputId="entity-id-filter" />
                         <InputNumber v-model="userIdFilter" placeholder="用户ID" :min="1" inputId="user-id-filter" />
                         <div class="flex items-center gap-2">
@@ -326,9 +362,7 @@ function formatReactionStats(stats: Record<string, number>) {
                     </div>
                 </div>
 
-                <DataTable :value="comments" :loading="loading" :rows="size" :lazy="true" :paginator="true"
-                    :totalRecords="total" dataKey="id" :rowsPerPageOptions="[10, 20, 50]" :first="paginationFirst"
-                    responsiveLayout="scroll" @page="onPageChange">
+                <DataTable :value="comments" :loading="loading" :rows="size" :lazy="true" :paginator="true" :totalRecords="total" dataKey="id" :rowsPerPageOptions="[10, 20, 50]" :first="paginationFirst" responsiveLayout="scroll" @page="onPageChange">
                     <Column field="id" header="ID" sortable />
                     <Column field="entityType" header="类型" sortable />
                     <Column field="entityId" header="实体ID" sortable />
@@ -337,14 +371,12 @@ function formatReactionStats(stats: Record<string, number>) {
                     <Column field="moderationLevel" header="风险" sortable />
                     <Column field="sensitiveFlag" header="敏感">
                         <template #body="slotProps">
-                            <Tag :value="slotProps.data.sensitiveFlag ? '是' : '否'"
-                                :severity="slotProps.data.sensitiveFlag ? 'danger' : 'success'" />
+                            <Tag :value="slotProps.data.sensitiveFlag ? '是' : '否'" :severity="slotProps.data.sensitiveFlag ? 'danger' : 'success'" />
                         </template>
                     </Column>
                     <Column field="contentPreview" header="内容预览" :style="{ maxWidth: '18rem' }">
                         <template #body="slotProps">
-                            <span class="whitespace-nowrap text-overflow-ellipsis overflow-hidden block"
-                                style="max-width: 18rem">{{ slotProps.data.contentPreview }}</span>
+                            <span class="whitespace-nowrap text-overflow-ellipsis overflow-hidden block" style="max-width: 18rem">{{ slotProps.data.contentPreview }}</span>
                         </template>
                     </Column>
                     <Column field="createdAt" header="创建时间" sortable />
@@ -352,12 +384,9 @@ function formatReactionStats(stats: Record<string, number>) {
                     <Column header="操作">
                         <template #body="slotProps">
                             <div class="flex gap-2">
-                                <Button label="详情" icon="pi pi-search" size="small"
-                                    @click="openDetail(slotProps.data)" />
-                                <Button label="审核" icon="pi pi-check" severity="info" size="small"
-                                    @click="openStatusDialog(slotProps.data)" />
-                                <Button label="编辑" icon="pi pi-pencil" severity="secondary" size="small"
-                                    @click="openEditDialog(slotProps.data)" />
+                                <Button label="详情" icon="pi pi-search" size="small" @click="openDetail(slotProps.data)" />
+                                <Button label="审核" icon="pi pi-check" severity="info" size="small" @click="openStatusDialog(slotProps.data)" />
+                                <Button label="编辑" icon="pi pi-pencil" severity="secondary" size="small" @click="openEditDialog(slotProps.data)" />
                             </div>
                         </template>
                     </Column>
@@ -373,25 +402,93 @@ function formatReactionStats(stats: Record<string, number>) {
             </div>
         </template>
         <template v-else-if="currentComment">
-            <div class="mb-3">
-                <div class="font-medium mb-1">评论内容</div>
-                <pre
-                    class="whitespace-pre-wrap bg-surface-200 dark:bg-surface-800 p-3 border-round">{{ currentComment.contentMd }}</pre>
-            </div>
-            <div class="grid">
-                <div class="col-12 md:col-6">
-                    <p><strong>状态：</strong>{{ currentComment.status }}</p>
-                    <p><strong>风险等级：</strong>{{ currentComment.moderationLevel ?? '-' }}</p>
-                    <p><strong>敏感词：</strong>{{ currentComment.sensitiveHits?.length ?
-                        currentComment.sensitiveHits.join('、') : '无' }}</p>
-                    <p><strong>备注：</strong>{{ currentComment.moderationNotes ?? '-' }}</p>
+            <div class="flex flex-column gap-4">
+                <div class="flex flex-wrap gap-2">
+                    <Tag :value="`状态：${getStatusLabel(currentComment.status)}`" :severity="getStatusSeverity(currentComment.status)" />
+                    <Tag v-if="currentComment.moderationLevel" :value="`风险：${getLevelLabel(currentComment.moderationLevel)}`" :severity="getLevelSeverity(currentComment.moderationLevel)" />
+                    <Tag :value="currentComment.sensitiveFlag ? '敏感评论' : '普通评论'" :severity="currentComment.sensitiveFlag ? 'danger' : 'success'" />
+                    <Tag :value="`可见性：${getVisibilityLabel(currentComment.visibility)}`" severity="info" />
                 </div>
-                <div class="col-12 md:col-6">
-                    <p><strong>用户ID：</strong>{{ currentComment.userId }}</p>
-                    <p><strong>实体：</strong>{{ currentComment.entityType }} #{{ currentComment.entityId }}</p>
-                    <p><strong>反应：</strong>{{ formatReactionStats(currentComment.reactionStats) || '无' }}</p>
-                    <p><strong>最后审核人：</strong>{{ currentComment.lastModeratedBy ?? '-' }}，时间：{{
-                        currentComment.lastModeratedAt ?? '-' }}</p>
+
+                <div class="border border-surface-200 dark:border-surface-700 rounded-lg p-4 bg-surface-0 dark:bg-surface-900">
+                    <div class="text-sm text-500 font-semibold uppercase tracking-wide mb-2">评论内容</div>
+                    <pre class="whitespace-pre-wrap bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg p-3 text-sm max-h-72 overflow-auto">{{ currentComment.contentMd }}</pre>
+                    <div v-if="currentComment.contentRendered" class="mt-4">
+                        <div class="text-sm text-500 font-semibold uppercase tracking-wide mb-2">渲染预览</div>
+                        <div class="border border-surface-200 dark:border-surface-700 rounded-lg p-3 text-sm max-h-64 overflow-auto bg-surface-50 dark:bg-surface-800" v-html="currentComment.contentRendered"></div>
+                    </div>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div class="border border-surface-200 dark:border-surface-700 rounded-lg p-4 bg-surface-0 dark:bg-surface-900 flex flex-column gap-3">
+                        <div class="text-sm text-500 font-semibold uppercase tracking-wide">主体信息</div>
+                        <div class="flex justify-between gap-3 text-sm">
+                            <span class="text-500">评论 ID</span>
+                            <span class="font-medium text-900">{{ currentComment.id }}</span>
+                        </div>
+                        <div class="flex justify-between gap-3 text-sm">
+                            <span class="text-500">用户 ID</span>
+                            <span class="font-medium text-900">{{ currentComment.userId ?? '-' }}</span>
+                        </div>
+                        <div class="flex justify-between gap-3 text-sm">
+                            <span class="text-500">实体</span>
+                            <span class="font-medium text-900">{{ currentComment.entityType }} #{{ currentComment.entityId }}</span>
+                        </div>
+                        <div class="flex justify-between gap-3 text-sm">
+                            <span class="text-500">可见性</span>
+                            <span class="font-medium text-900">{{ getVisibilityLabel(currentComment.visibility) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="border border-surface-200 dark:border-surface-700 rounded-lg p-4 bg-surface-0 dark:bg-surface-900 flex flex-column gap-3">
+                        <div class="text-sm text-500 font-semibold uppercase tracking-wide">审核信息</div>
+                        <div class="flex justify-between gap-3 text-sm">
+                            <span class="text-500">状态</span>
+                            <span class="font-medium text-900">{{ getStatusLabel(currentComment.status) }}</span>
+                        </div>
+                        <div class="flex justify-between gap-3 text-sm">
+                            <span class="text-500">风险等级</span>
+                            <span class="font-medium text-900">{{ getLevelLabel(currentComment.moderationLevel) }}</span>
+                        </div>
+                        <div class="flex justify-between gap-3 text-sm">
+                            <span class="text-500">最后审核人</span>
+                            <span class="font-medium text-900">{{ currentComment.lastModeratedBy ?? '-' }}</span>
+                        </div>
+                        <div class="flex justify-between gap-3 text-sm">
+                            <span class="text-500">审核时间</span>
+                            <span class="font-medium text-900">{{ currentComment.lastModeratedAt ?? '-' }}</span>
+                        </div>
+                        <div>
+                            <div class="text-500 text-sm">备注</div>
+                            <div class="font-medium text-900 whitespace-pre-wrap mt-1">{{ currentComment.moderationNotes || '无' }}</div>
+                        </div>
+                        <div>
+                            <div class="text-500 text-sm">敏感词</div>
+                            <div v-if="sensitiveHitsList.length" class="mt-2 flex flex-wrap gap-2">
+                                <Tag v-for="word in sensitiveHitsList" :key="word" :value="word" severity="danger" />
+                            </div>
+                            <div v-else class="font-medium text-900 mt-1">无</div>
+                        </div>
+                    </div>
+
+                    <div class="border border-surface-200 dark:border-surface-700 rounded-lg p-4 bg-surface-0 dark:bg-surface-900 flex flex-column gap-3">
+                        <div class="text-sm text-500 font-semibold uppercase tracking-wide">互动数据</div>
+                        <div>
+                            <div class="text-500 text-sm">反应</div>
+                            <div v-if="reactionEntries.length" class="mt-2 flex flex-wrap gap-2">
+                                <Tag v-for="[reaction, count] in reactionEntries" :key="reaction" :value="`${reaction}：${count}`" severity="info" />
+                            </div>
+                            <div v-else class="font-medium text-900 mt-1">无</div>
+                        </div>
+                        <div class="flex justify-between gap-3 text-sm mt-3">
+                            <span class="text-500">创建时间</span>
+                            <span class="font-medium text-900">{{ currentComment.createdAt ?? '-' }}</span>
+                        </div>
+                        <div class="flex justify-between gap-3 text-sm">
+                            <span class="text-500">更新时间</span>
+                            <span class="font-medium text-900">{{ currentComment.updatedAt ?? '-' }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </template>
@@ -403,10 +500,8 @@ function formatReactionStats(stats: Record<string, number>) {
     <Dialog v-model:visible="statusDialogVisible" modal header="审核评论" :style="{ width: '32rem' }">
         <template v-if="currentComment">
             <div class="flex flex-column gap-3">
-                <Dropdown v-model="statusForm.status" :options="statusOptions" optionLabel="label" optionValue="value"
-                    placeholder="选择状态" />
-                <Dropdown v-model="statusForm.moderationLevel" :options="levelOptions" optionLabel="label"
-                    optionValue="value" placeholder="风险等级" />
+                <Dropdown v-model="statusForm.status" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="选择状态" />
+                <Dropdown v-model="statusForm.moderationLevel" :options="levelOptions" optionLabel="label" optionValue="value" placeholder="风险等级" />
                 <Textarea v-model="statusForm.moderationNotes" placeholder="备注" rows="4" autoResize />
                 <div class="flex justify-end gap-2 mt-3">
                     <Button label="取消" severity="secondary" @click="statusDialogVisible = false" />
@@ -422,8 +517,7 @@ function formatReactionStats(stats: Record<string, number>) {
     <Dialog v-model:visible="editDialogVisible" modal header="编辑评论" :style="{ width: '50vw' }">
         <template v-if="currentComment">
             <div class="flex flex-column gap-3">
-                <Dropdown v-model="editForm.visibility" :options="visibilityOptions" optionLabel="label"
-                    optionValue="value" placeholder="可见性" />
+                <Dropdown v-model="editForm.visibility" :options="visibilityOptions" optionLabel="label" optionValue="value" placeholder="可见性" />
                 <Textarea v-model="editForm.contentMd" placeholder="评论内容 (Markdown)" rows="8" autoResize />
                 <Textarea v-model="editForm.contentRendered" placeholder="渲染内容 (可选)" rows="4" autoResize />
                 <div class="flex justify-end gap-2 mt-3">
