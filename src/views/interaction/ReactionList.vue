@@ -125,6 +125,34 @@ async function removeReaction(row: ReactionView) {
         });
     }
 }
+
+function viewReactionDetail(row: ReactionView) {
+    toast.add({
+        severity: 'info',
+        summary: '反馈详情',
+        detail: `用户${row.userId}对${row.entityType}(${row.entityId})的${row.kind}反馈`,
+        life: 5000
+    });
+}
+
+function copyReactionInfo(row: ReactionView) {
+    const info = `用户ID: ${row.userId}, 实体: ${row.entityType}#${row.entityId}, 类型: ${row.kind}`;
+    navigator.clipboard.writeText(info).then(() => {
+        toast.add({
+            severity: 'success',
+            summary: '复制成功',
+            detail: '反馈信息已复制到剪贴板',
+            life: 3000
+        });
+    }).catch(() => {
+        toast.add({
+            severity: 'error',
+            summary: '复制失败',
+            detail: '无法访问剪贴板',
+            life: 3000
+        });
+    });
+}
 </script>
 
 <template>
@@ -134,10 +162,13 @@ async function removeReaction(row: ReactionView) {
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
                         <InputNumber v-model="userIdFilter" placeholder="用户ID" :min="1" inputId="reaction-user" />
-                        <Dropdown v-model="entityTypeFilter" :options="entityTypeOptions" optionLabel="label" optionValue="value" placeholder="实体类型" style="width: 10rem" />
+                        <Dropdown v-model="entityTypeFilter" :options="entityTypeOptions" optionLabel="label"
+                            optionValue="value" placeholder="实体类型" style="width: 10rem" />
                         <InputNumber v-model="entityIdFilter" placeholder="实体ID" :min="1" inputId="reaction-entity" />
-                        <Dropdown v-model="kindFilter" :options="kindOptions" optionLabel="label" optionValue="value" placeholder="反馈类型" style="width: 10rem" />
-                        <Dropdown v-model="sourceFilter" :options="sourceOptions" optionLabel="label" optionValue="value" placeholder="来源" style="width: 10rem" />
+                        <Dropdown v-model="kindFilter" :options="kindOptions" optionLabel="label" optionValue="value"
+                            placeholder="反馈类型" style="width: 10rem" />
+                        <Dropdown v-model="sourceFilter" :options="sourceOptions" optionLabel="label"
+                            optionValue="value" placeholder="来源" style="width: 10rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -145,19 +176,9 @@ async function removeReaction(row: ReactionView) {
                     </div>
                 </div>
 
-                <DataTable
-                    :value="reactions"
-                    :loading="loading"
-                    :paginator="true"
-                    :lazy="true"
-                    :rows="size"
-                    :totalRecords="total"
-                    :rowsPerPageOptions="[10, 20, 50]"
-                    :first="(page - 1) * size"
-                    dataKey="entityId"
-                    responsiveLayout="scroll"
-                    @page="onPageChange"
-                >
+                <DataTable :value="reactions" :loading="loading" :paginator="true" :lazy="true" :rows="size"
+                    :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size"
+                    dataKey="entityId" responsiveLayout="scroll" @page="onPageChange">
                     <Column field="userId" header="用户ID" sortable />
                     <Column field="entityType" header="实体类型" sortable />
                     <Column field="entityId" header="实体ID" sortable />
@@ -166,13 +187,25 @@ async function removeReaction(row: ReactionView) {
                     <Column field="weight" header="权重" sortable />
                     <Column field="metadata" header="附加信息">
                         <template #body="slotProps">
-                            <span class="block text-overflow-ellipsis whitespace-nowrap" style="max-width: 16rem">{{ slotProps.data.metadata ?? '-' }}</span>
+                            <span class="block text-overflow-ellipsis whitespace-nowrap" style="max-width: 16rem">{{
+                                slotProps.data.metadata ?? '-' }}</span>
                         </template>
                     </Column>
                     <Column field="createdAt" header="创建时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <Button label="删除" icon="pi pi-trash" severity="danger" size="small" @click="removeReaction(slotProps.data)" />
+                            <SplitButton label="删除" icon="pi pi-trash" severity="danger" size="small" :model="[
+                                {
+                                    label: '查看详情',
+                                    icon: 'pi pi-eye',
+                                    command: () => viewReactionDetail(slotProps.data)
+                                },
+                                {
+                                    label: '复制ID',
+                                    icon: 'pi pi-copy',
+                                    command: () => copyReactionInfo(slotProps.data)
+                                }
+                            ]" @click="removeReaction(slotProps.data)" />
                         </template>
                     </Column>
                 </DataTable>

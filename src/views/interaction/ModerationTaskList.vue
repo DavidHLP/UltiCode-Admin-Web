@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { CommentDetail, ModerationTaskSummary } from '@/api/interaction/comments';
 import {
     assignModerationTask,
     decideModerationTask,
@@ -8,10 +9,9 @@ import {
     type ModerationAssignPayload,
     type ModerationDecisionPayload,
     type ModerationTaskDetail,
-    type ModerationTaskQuery,
-    type ModerationTaskSummary
+    type ModerationTaskQuery
 } from '@/api/interaction/moderation';
-import type { CommentDetail } from '@/api/interaction/comments';
+import { NDescriptions, NDescriptionsItem, NSpin } from 'naive-ui';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 
@@ -34,18 +34,22 @@ const riskFilter = ref('');
 const sourceFilter = ref('');
 const reviewerFilter = ref<number | null>(null);
 
-const detailDialogVisible = ref(false);
+const expandedRows = ref<Record<number, boolean>>({});
+const detailsCache = ref<Record<number, ModerationTaskDetail>>({});
+const detailLoading = ref<Record<number, boolean>>({});
 const assignDialogVisible = ref(false);
 const decisionDialogVisible = ref(false);
 const actionLoading = ref(false);
 
 const currentDetail = ref<ModerationTaskDetail | null>(null);
 const assignForm = ref<{ reviewerId: number | null; notes: string }>({ reviewerId: null, notes: '' });
-const decisionForm = ref<{ decision: ModerationDecisionPayload['decision']; notes: string; moderationLevel: string }>({
-    decision: 'approve',
-    notes: '',
-    moderationLevel: ''
-});
+const decisionForm = ref<{ decision: ModerationDecisionPayload['decision']; notes: string; moderationLevel: string }>(
+    {
+        decision: 'approve',
+        notes: '',
+        moderationLevel: ''
+    }
+);
 
 const toast = useToast();
 
@@ -106,12 +110,7 @@ async function loadTasks() {
             size.value = Number(data.size);
         }
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: '加载失败',
-            detail: (error as Error)?.message ?? '加载审核任务失败',
-            life: 4000
-        });
+        toast.add({ severity: 'error', summary: '加载失败', detail: (error as Error)?.message ?? '加载审核任务失败', life: 4000 });
     } finally {
         loading.value = false;
     }
@@ -137,38 +136,54 @@ function onPageChange(event: { page: number; rows: number }) {
     loadTasks();
 }
 
-async function openDetail(task: ModerationTaskSummary) {
-    detailDialogVisible.value = true;
-    actionLoading.value = true;
+async function onRowExpand(event: { data: ModerationTaskSummary }) {
+    const taskId = event.data.id;
+    if (detailsCache.value[taskId]) return;
+    detailLoading.value[taskId] = true;
     try {
-        const detail = await fetchModerationTask(task.id);
-        currentDetail.value = detail;
+        const detail = await fetchModerationTask(taskId);
+        detailsCache.value[taskId] = detail;
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: '加载失败',
-            detail: (error as Error)?.message ?? '获取任务详情失败',
-            life: 4000
-        });
+        toast.add({ severity: 'error', summary: '加载失败', detail: (error as Error)?.message ?? '获取任务详情失败', life: 4000 });
+        delete expandedRows.value[taskId];
     } finally {
-        actionLoading.value = false;
+        delete detailLoading.value[taskId];
+    }
+}
+
+function onRowCollapse(_event: { data: ModerationTaskSummary }) {
+    // 可选：清理缓存
+}
+
+function getTaskDetail(taskId: number): ModerationTaskDetail | null {
+    return detailsCache.value[taskId] ?? null;
+}
+
+async function openDetail(task: ModerationTaskSummary) {
+    expandedRows.value[task.id] = true;
+    if (!detailsCache.value[task.id]) {
+        detailLoading.value[task.id] = true;
+        try {
+            const detail = await fetchModerationTask(task.id);
+            detailsCache.value[task.id] = detail;
+        } catch (error) {
+            toast.add({ severity: 'error', summary: '加载失败', detail: (error as Error)?.message ?? '获取任务详情失败', life: 4000 });
+        } finally {
+            delete detailLoading.value[task.id];
+        }
     }
 }
 
 async function takeTask(task: ModerationTaskSummary) {
     actionLoading.value = true;
     try {
-        currentDetail.value = await takeModerationTask(task.id);
+        const detail = await takeModerationTask(task.id);
+        detailsCache.value[task.id] = detail;
         toast.add({ severity: 'success', summary: '认领成功', detail: '任务已认领', life: 3000 });
         await loadTasks();
-        detailDialogVisible.value = true;
+        expandedRows.value[task.id] = true;
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: '操作失败',
-            detail: (error as Error)?.message ?? '认领任务失败',
-            life: 4000
-        });
+        toast.add({ severity: 'error', summary: '操作失败', detail: (error as Error)?.message ?? '认领任务失败', life: 4000 });
     } finally {
         actionLoading.value = false;
     }
@@ -176,10 +191,7 @@ async function takeTask(task: ModerationTaskSummary) {
 
 function openAssignDialog(task: ModerationTaskSummary) {
     assignDialogVisible.value = true;
-    assignForm.value = {
-        reviewerId: task.reviewerId ?? null,
-        notes: ''
-    };
+    assignForm.value = { reviewerId: task.reviewerId ?? null, notes: '' };
     currentDetail.value = {
         task,
         comment: {
@@ -215,17 +227,13 @@ async function submitAssign(taskId: number) {
     };
     actionLoading.value = true;
     try {
-        currentDetail.value = await assignModerationTask(taskId, payload);
+        const detail = await assignModerationTask(taskId, payload);
+        detailsCache.value[taskId] = detail;
         toast.add({ severity: 'success', summary: '指派成功', detail: '任务已指派', life: 3000 });
         assignDialogVisible.value = false;
         await loadTasks();
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: '操作失败',
-            detail: (error as Error)?.message ?? '指派任务失败',
-            life: 4000
-        });
+        toast.add({ severity: 'error', summary: '操作失败', detail: (error as Error)?.message ?? '指派任务失败', life: 4000 });
     } finally {
         actionLoading.value = false;
     }
@@ -237,18 +245,9 @@ async function openDecisionDialog(task: ModerationTaskSummary) {
     try {
         const detail = await fetchModerationTask(task.id);
         currentDetail.value = detail;
-        decisionForm.value = {
-            decision: 'approve',
-            notes: '',
-            moderationLevel: detail.task.riskLevel ?? ''
-        };
+        decisionForm.value = { decision: 'approve', notes: '', moderationLevel: detail.task.riskLevel ?? '' };
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: '加载失败',
-            detail: (error as Error)?.message ?? '获取任务详情失败',
-            life: 4000
-        });
+        toast.add({ severity: 'error', summary: '加载失败', detail: (error as Error)?.message ?? '获取任务详情失败', life: 4000 });
         decisionDialogVisible.value = false;
     } finally {
         actionLoading.value = false;
@@ -263,32 +262,22 @@ async function submitDecision(taskId: number) {
     };
     actionLoading.value = true;
     try {
-        currentDetail.value = await decideModerationTask(taskId, payload);
+        const detail = await decideModerationTask(taskId, payload);
+        detailsCache.value[taskId] = detail;
         toast.add({ severity: 'success', summary: '审核完成', detail: '审核结果已提交', life: 3000 });
         decisionDialogVisible.value = false;
-        detailDialogVisible.value = true;
+        expandedRows.value[taskId] = true;
         await loadTasks();
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: '操作失败',
-            detail: (error as Error)?.message ?? '提交审核结果失败',
-            life: 4000
-        });
+        toast.add({ severity: 'error', summary: '操作失败', detail: (error as Error)?.message ?? '提交审核结果失败', life: 4000 });
     } finally {
         actionLoading.value = false;
     }
 }
 
 function formatCommentPreview(comment: CommentDetail | undefined) {
-    if (!comment?.contentMd) {
-        return '-';
-    }
+    if (!comment?.contentMd) return '-';
     return comment.contentMd.length > 80 ? `${comment.contentMd.slice(0, 80)}...` : comment.contentMd;
-}
-
-function closeDetail() {
-    detailDialogVisible.value = false;
 }
 </script>
 
@@ -298,9 +287,12 @@ function closeDetail() {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="任务状态" style="width: 10rem" />
-                        <Dropdown v-model="riskFilter" :options="riskOptions" optionLabel="label" optionValue="value" placeholder="风险等级" style="width: 10rem" />
-                        <Dropdown v-model="sourceFilter" :options="sourceOptions" optionLabel="label" optionValue="value" placeholder="来源" style="width: 10rem" />
+                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label"
+                            optionValue="value" placeholder="任务状态" style="width: 10rem" />
+                        <Dropdown v-model="riskFilter" :options="riskOptions" optionLabel="label" optionValue="value"
+                            placeholder="风险等级" style="width: 10rem" />
+                        <Dropdown v-model="sourceFilter" :options="sourceOptions" optionLabel="label"
+                            optionValue="value" placeholder="来源" style="width: 10rem" />
                         <InputNumber v-model="reviewerFilter" placeholder="审核人ID" :min="1" inputId="reviewer-filter" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
@@ -309,19 +301,11 @@ function closeDetail() {
                     </div>
                 </div>
 
-                <DataTable
-                    :value="tasks"
-                    :loading="loading"
-                    :paginator="true"
-                    :lazy="true"
-                    :rows="size"
-                    :totalRecords="total"
-                    :rowsPerPageOptions="[10, 20, 50]"
-                    :first="paginationFirst"
-                    dataKey="id"
-                    responsiveLayout="scroll"
-                    @page="onPageChange"
-                >
+                <DataTable :value="tasks" :loading="loading" :paginator="true" :lazy="true" :rows="size"
+                    :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="paginationFirst" dataKey="id"
+                    responsiveLayout="scroll" @page="onPageChange" @rowExpand="onRowExpand" @rowCollapse="onRowCollapse"
+                    v-model:expandedRows="expandedRows">
+                    <Column expander style="width: 3rem" />
                     <Column field="id" header="任务ID" sortable />
                     <Column field="status" header="状态" sortable />
                     <Column field="riskLevel" header="风险" sortable />
@@ -334,60 +318,125 @@ function closeDetail() {
                     <Column field="updatedAt" header="更新时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <div class="flex gap-2 flex-wrap">
-                                <Button label="详情" icon="pi pi-search" size="small" @click="openDetail(slotProps.data)" />
-                                <Button label="认领" icon="pi pi-user-plus" severity="info" size="small" @click="takeTask(slotProps.data)" />
-                                <Button label="指派" icon="pi pi-share-alt" severity="secondary" size="small" @click="openAssignDialog(slotProps.data)" />
-                                <Button label="审核" icon="pi pi-check" severity="success" size="small" @click="openDecisionDialog(slotProps.data)" />
-                            </div>
+                            <SplitButton label="审核" icon="pi pi-check" severity="success" size="small" :model="[
+                                {
+                                    label: '认领',
+                                    icon: 'pi pi-user-plus',
+                                    command: () => takeTask(slotProps.data)
+                                },
+                                {
+                                    label: '指派',
+                                    icon: 'pi pi-share-alt',
+                                    command: () => openAssignDialog(slotProps.data)
+                                },
+                                {
+                                    label: '查看详情',
+                                    icon: 'pi pi-eye',
+                                    command: () => openDetail(slotProps.data)
+                                }
+                            ]" @click="openDecisionDialog(slotProps.data)" />
                         </template>
                     </Column>
+
+                    <!-- 全部用 Descriptions 展示 -->
+                    <template #expansion="slotProps">
+                        <div class="p-4 bg-surface-50 dark:bg-surface-900">
+                            <template v-if="detailLoading[slotProps.data.id]">
+                                <div class="flex justify-center items-center py-8">
+                                    <NSpin size="medium" />
+                                </div>
+                            </template>
+
+                            <template v-else-if="getTaskDetail(slotProps.data.id)">
+                                <div class="flex flex-col gap-4">
+                                    <!-- 任务状态 -->
+                                    <NDescriptions bordered :column="3" label-placement="left" size="small">
+                                        <template #header>
+                                            <div class="text-sm font-semibold"><i
+                                                    class="pi pi-info-circle mr-2"></i>任务状态</div>
+                                        </template>
+                                        <NDescriptionsItem label="任务ID">{{ getTaskDetail(slotProps.data.id)!.task.id }}
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="状态">{{ getTaskDetail(slotProps.data.id)!.task.status
+                                            }}</NDescriptionsItem>
+                                        <NDescriptionsItem label="风险等级">{{
+                                            getTaskDetail(slotProps.data.id)!.task.riskLevel ?? '-' }}
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="优先级">{{
+                                            getTaskDetail(slotProps.data.id)!.task.priority ?? '-' }}
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="来源">{{ getTaskDetail(slotProps.data.id)!.task.source
+                                            }}</NDescriptionsItem>
+                                        <NDescriptionsItem label="创建时间">{{
+                                            getTaskDetail(slotProps.data.id)!.task.createdAt }}</NDescriptionsItem>
+                                    </NDescriptions>
+
+                                    <!-- 审核与实体信息 -->
+                                    <NDescriptions bordered :column="3" label-placement="left" size="small">
+                                        <template #header>
+                                            <div class="text-sm font-semibold"><i class="pi pi-user mr-2"></i>审核与实体信息
+                                            </div>
+                                        </template>
+                                        <NDescriptionsItem label="审核人ID">{{
+                                            getTaskDetail(slotProps.data.id)!.task.reviewerId ?? '-' }}
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="完成时间">{{
+                                            getTaskDetail(slotProps.data.id)!.task.reviewedAt ?? '-' }}
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="实体类型">{{
+                                            getTaskDetail(slotProps.data.id)!.task.entityType }}</NDescriptionsItem>
+                                        <NDescriptionsItem label="实体ID">{{
+                                            getTaskDetail(slotProps.data.id)!.task.entityId }}</NDescriptionsItem>
+                                        <NDescriptionsItem label="更新时间" :span="2">{{
+                                            getTaskDetail(slotProps.data.id)!.task.updatedAt }}</NDescriptionsItem>
+                                        <NDescriptionsItem label="备注" :span="3">
+                                            <div class="whitespace-pre-wrap">{{
+                                                getTaskDetail(slotProps.data.id)!.task.notes || '无' }}</div>
+                                        </NDescriptionsItem>
+                                    </NDescriptions>
+
+                                    <!-- 评论内容 -->
+                                    <NDescriptions bordered :column="1" label-placement="left" size="small">
+                                        <template #header>
+                                            <div class="text-sm font-semibold"><i class="pi pi-comment mr-2"></i>评论内容
+                                            </div>
+                                        </template>
+                                        <NDescriptionsItem label="Markdown 原文">
+                                            <pre
+                                                class="whitespace-pre-wrap bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded p-3 text-sm max-h-60 overflow-auto">
+            {{ getTaskDetail(slotProps.data.id)!.comment?.contentMd ?? '-' }}</pre>
+                                        </NDescriptionsItem>
+                                    </NDescriptions>
+
+                                    <!-- 审核记录 -->
+                                    <NDescriptions bordered :column="1" label-placement="left" size="small">
+                                        <template #header>
+                                            <div class="text-sm font-semibold"><i class="pi pi-history mr-2"></i>审核记录
+                                            </div>
+                                        </template>
+                                        <NDescriptionsItem label="记录列表">
+                                            <template v-if="(getTaskDetail(slotProps.data.id)!.actions ?? []).length">
+                                                <div class="flex flex-col gap-2">
+                                                    <div v-for="(act, idx) in getTaskDetail(slotProps.data.id)!.actions"
+                                                        :key="idx" class="text-sm">
+                                                        <div class="font-medium">{{ act.createdAt }} · {{ act.action }}
+                                                        </div>
+                                                        <div class="text-500">操作人：{{ act.operatorId }}<span
+                                                                v-if="act.remarks"> ｜ 备注：{{ act.remarks }}</span></div>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <span v-else class="text-500">无</span>
+                                        </NDescriptionsItem>
+                                    </NDescriptions>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
                 </DataTable>
             </div>
         </div>
     </div>
-
-    <Dialog v-model:visible="detailDialogVisible" modal header="任务详情" :style="{ width: '60vw' }" @hide="closeDetail">
-        <template v-if="actionLoading">
-            <div class="flex justify-center items-center py-8">
-                <ProgressSpinner style="width: 40px; height: 40px" />
-            </div>
-        </template>
-        <template v-else-if="currentDetail">
-            <div class="grid">
-                <div class="col-12 md:col-6">
-                    <p><strong>任务状态：</strong>{{ currentDetail.task.status }}</p>
-                    <p><strong>风险等级：</strong>{{ currentDetail.task.riskLevel ?? '-' }}</p>
-                    <p><strong>来源：</strong>{{ currentDetail.task.source }}</p>
-                    <p><strong>审核人：</strong>{{ currentDetail.task.reviewerId ?? '-' }}</p>
-                    <p><strong>备注：</strong>{{ currentDetail.task.notes ?? '-' }}</p>
-                </div>
-                <div class="col-12 md:col-6">
-                    <p><strong>实体类型：</strong>{{ currentDetail.task.entityType }}</p>
-                    <p><strong>实体ID：</strong>{{ currentDetail.task.entityId }}</p>
-                    <p><strong>创建时间：</strong>{{ currentDetail.task.createdAt }}</p>
-                    <p><strong>更新时间：</strong>{{ currentDetail.task.updatedAt }}</p>
-                    <p><strong>完成时间：</strong>{{ currentDetail.task.reviewedAt ?? '-' }}</p>
-                </div>
-            </div>
-            <div class="mt-3">
-                <div class="font-medium mb-2">评论内容</div>
-                <pre class="whitespace-pre-wrap bg-surface-200 dark:bg-surface-800 p-3 border-round">{{ currentDetail.comment?.contentMd ?? '-' }}</pre>
-            </div>
-            <div class="mt-3">
-                <div class="font-medium mb-2">审核记录</div>
-                <DataTable :value="currentDetail.actions" responsiveLayout="scroll">
-                    <Column field="createdAt" header="时间" />
-                    <Column field="action" header="动作" />
-                    <Column field="operatorId" header="操作人" />
-                    <Column field="remarks" header="备注" />
-                </DataTable>
-            </div>
-        </template>
-        <template v-else>
-            <div class="text-center py-6 text-500">暂无数据</div>
-        </template>
-    </Dialog>
 
     <Dialog v-model:visible="assignDialogVisible" modal header="指派任务" :style="{ width: '28rem' }">
         <div class="flex flex-column gap-3">
@@ -395,19 +444,22 @@ function closeDetail() {
             <Textarea v-model="assignForm.notes" rows="4" placeholder="指派备注" autoResize />
             <div class="flex justify-end gap-2">
                 <Button label="取消" severity="secondary" @click="assignDialogVisible = false" />
-                <Button label="确认" icon="pi pi-check" :loading="actionLoading" @click="currentDetail && submitAssign(currentDetail.task.id)" />
+                <Button label="确认" icon="pi pi-check" :loading="actionLoading"
+                    @click="currentDetail && submitAssign(currentDetail.task.id)" />
             </div>
         </div>
     </Dialog>
 
     <Dialog v-model:visible="decisionDialogVisible" modal header="审核决策" :style="{ width: '32rem' }">
         <div class="flex flex-column gap-3">
-            <Dropdown v-model="decisionForm.decision" :options="decisionOptions" optionLabel="label" optionValue="value" placeholder="审核结果" />
+            <Dropdown v-model="decisionForm.decision" :options="decisionOptions" optionLabel="label" optionValue="value"
+                placeholder="审核结果" />
             <InputText v-model="decisionForm.moderationLevel" placeholder="风险等级 (可选)" />
             <Textarea v-model="decisionForm.notes" rows="4" placeholder="审核备注" autoResize />
             <div class="flex justify-end gap-2">
                 <Button label="取消" severity="secondary" @click="decisionDialogVisible = false" />
-                <Button label="提交" icon="pi pi-send" :loading="actionLoading" @click="currentDetail && submitDecision(currentDetail.task.id)" />
+                <Button label="提交" icon="pi pi-send" :loading="actionLoading"
+                    @click="currentDetail && submitDecision(currentDetail.task.id)" />
             </div>
         </div>
     </Dialog>

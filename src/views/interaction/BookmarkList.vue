@@ -6,6 +6,7 @@ import {
     type BookmarkQuery,
     type BookmarkView
 } from '@/api/interaction/bookmarks';
+import { NDescriptions, NDescriptionsItem } from 'naive-ui';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
@@ -47,10 +48,17 @@ const sourceOptions: FilterOption[] = [
     { label: '迁移', value: 'migration' }
 ];
 
-// Dialog / selection state
+// 展开行状态（使用联合主键作为 key）
+const expandedRows = ref<Record<string, boolean>>({});
+
+// 删除确认状态
 const showDeleteDialog = ref(false);
-const showDetailDialog = ref(false);
 const selectedBookmark = ref<BookmarkView | null>(null);
+
+// 生成联合主键
+function getRowKey(bookmark: BookmarkView): string {
+    return `${bookmark.userId}-${bookmark.entityType}-${bookmark.entityId}`;
+}
 
 onMounted(() => {
     loadBookmarks();
@@ -71,19 +79,10 @@ async function loadBookmarks() {
         const data = await fetchBookmarks(params);
         bookmarks.value = data.items ?? [];
         total.value = data.total ?? 0;
-        if (typeof data.page === 'number') {
-            page.value = Math.max(1, Number(data.page));
-        }
-        if (typeof data.size === 'number' && Number(data.size) > 0) {
-            size.value = Number(data.size);
-        }
+        if (typeof data.page === 'number') page.value = Math.max(1, Number(data.page));
+        if (typeof data.size === 'number' && Number(data.size) > 0) size.value = Number(data.size);
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: '加载失败',
-            detail: (error as Error)?.message ?? '加载收藏列表失败',
-            life: 4000
-        });
+        toast.add({ severity: 'error', summary: '加载失败', detail: (error as Error)?.message ?? '加载收藏列表失败', life: 4000 });
     } finally {
         loading.value = false;
     }
@@ -110,7 +109,6 @@ function onPageChange(event: { page: number; rows: number }) {
     loadBookmarks();
 }
 
-// open a confirmation dialog instead of deleting immediately
 function promptDelete(row: BookmarkView) {
     selectedBookmark.value = row;
     showDeleteDialog.value = true;
@@ -131,12 +129,7 @@ async function confirmDelete() {
         selectedBookmark.value = null;
         await loadBookmarks();
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: '删除失败',
-            detail: (error as Error)?.message ?? '删除收藏失败',
-            life: 4000
-        });
+        toast.add({ severity: 'error', summary: '删除失败', detail: (error as Error)?.message ?? '删除收藏失败', life: 4000 });
     } finally {
         loading.value = false;
     }
@@ -147,15 +140,14 @@ function cancelDelete() {
     selectedBookmark.value = null;
 }
 
-function viewDetails(row: BookmarkView) {
-    selectedBookmark.value = row;
-    showDetailDialog.value = true;
-}
-
-function closeDetails() {
-    showDetailDialog.value = false;
-    selectedBookmark.value = null;
-}
+// SplitButton 菜单项
+const getActionItems = (bookmark: BookmarkView) => [
+    {
+        label: '删除',
+        icon: 'pi pi-trash',
+        command: () => promptDelete(bookmark)
+    }
+];
 </script>
 
 <template>
@@ -181,7 +173,8 @@ function closeDetails() {
 
                 <DataTable :value="bookmarks" :loading="loading" :paginator="true" :lazy="true" :rows="size"
                     :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size"
-                    dataKey="entityId" responsiveLayout="scroll" @page="onPageChange">
+                    :dataKey="getRowKey" responsiveLayout="scroll" v-model:expandedRows="expandedRows">
+                    <Column expander style="width:3rem" />
                     <Column field="userId" header="用户ID" sortable />
                     <Column field="entityType" header="实体类型" sortable />
                     <Column field="entityId" header="实体ID" sortable />
@@ -204,55 +197,90 @@ function closeDetails() {
                     <Column field="createdAt" header="创建时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <div class="flex items-center">
-                                <Button class="mr-2" label="查看" icon="pi pi-eye" severity="info" size="small"
-                                    @click="viewDetails(slotProps.data)" />
-                                <Button label="删除" icon="pi pi-trash" severity="danger" size="small"
-                                    @click="promptDelete(slotProps.data)" />
-                            </div>
+                            <SplitButton label="操作" :model="getActionItems(slotProps.data)" size="small"
+                                severity="secondary" @click="promptDelete(slotProps.data)">
+                                <template #icon>
+                                    <i class="pi pi-cog"></i>
+                                </template>
+                            </SplitButton>
                         </template>
                     </Column>
+
+                    <!-- 行展开：使用 Accordion + NDescriptions 呈现详情 -->
+                    <template #expansion="slotProps">
+                        <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded">
+                            <Accordion :multiple="true" :activeIndex="[0]">
+                                <AccordionTab header="基本信息">
+                                    <NDescriptions bordered :column="3" label-placement="left" size="small">
+                                        <NDescriptionsItem label="用户ID">{{ slotProps.data.userId }}</NDescriptionsItem>
+                                        <NDescriptionsItem label="实体类型">{{ slotProps.data.entityType }}
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="实体ID">{{ slotProps.data.entityId }}
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="可见性">{{ slotProps.data.visibility }}
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="来源">{{ slotProps.data.source }}</NDescriptionsItem>
+                                        <NDescriptionsItem label="创建时间">{{ slotProps.data.createdAt }}
+                                        </NDescriptionsItem>
+                                    </NDescriptions>
+                                </AccordionTab>
+
+                                <AccordionTab header="标签与备注">
+                                    <NDescriptions bordered :column="1" label-placement="left" size="small">
+                                        <NDescriptionsItem label="标签">
+                                            <div class="flex gap-1 flex-wrap">
+                                                <Tag v-for="tag in slotProps.data.tags" :key="tag" severity="info"
+                                                    :value="tag" />
+                                                <span v-if="!slotProps.data.tags?.length">-</span>
+                                            </div>
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="备注">
+                                            <div class="whitespace-pre-wrap">{{ slotProps.data.note ?? '-' }}</div>
+                                        </NDescriptionsItem>
+                                    </NDescriptions>
+                                </AccordionTab>
+                            </Accordion>
+                        </div>
+                    </template>
                 </DataTable>
 
-                <!-- Detail Dialog -->
-                <Dialog header="收藏详情" :visible="showDetailDialog" modal :style="{ width: '40rem' }"
-                    :breakpoints="{ '960px': '90vw' }" @hide="closeDetails">
-                    <div v-if="selectedBookmark">
-                        <div class="grid">
-                            <div class="col-12 md:col-6"><strong>用户ID：</strong> {{ selectedBookmark.userId }}</div>
-                            <div class="col-12 md:col-6"><strong>实体类型：</strong> {{ selectedBookmark.entityType }}</div>
-                            <div class="col-12 md:col-6"><strong>实体ID：</strong> {{ selectedBookmark.entityId }}</div>
-                            <div class="col-12 md:col-6"><strong>可见性：</strong> {{ selectedBookmark.visibility }}</div>
-                            <div class="col-12"><strong>备注：</strong> {{ selectedBookmark.note ?? '-' }}</div>
-                            <div class="col-12"><strong>标签：</strong>
-                                <div class="flex gap-1 flex-wrap mt-2">
-                                    <Tag v-for="tag in selectedBookmark.tags" :key="tag" severity="info" :value="tag" />
-                                    <span v-if="!selectedBookmark.tags?.length">-</span>
-                                </div>
-                            </div>
-                            <div class="col-12 md:col-6"><strong>来源：</strong> {{ selectedBookmark.source }}</div>
-                            <div class="col-12 md:col-6"><strong>创建时间：</strong> {{ selectedBookmark.createdAt }}</div>
-                        </div>
-                    </div>
-                    <template #footer>
-                        <Button label="关闭" icon="pi pi-times" class="p-button-text" @click="closeDetails" />
-                    </template>
-                </Dialog>
+                <!-- 删除确认弹窗 -->
+                <Dialog header="确认删除" v-model:visible="showDeleteDialog" modal :style="{ width: '32rem' }"
+                    :breakpoints="{ '640px': '95vw' }" @hide="cancelDelete">
+                    <template v-if="selectedBookmark">
+                        <NSpace vertical :size="16" class="py-2">
+                            <NAlert type="warning" :bordered="false">
+                                <template #icon>
+                                    <i class="pi pi-exclamation-triangle" style="font-size: 1.25rem"></i>
+                                </template>
+                                此操作将永久删除该收藏记录，无法恢复。
+                            </NAlert>
 
-                <!-- Delete Confirmation Dialog -->
-                <Dialog header="确认删除" :visible="showDeleteDialog" modal :style="{ width: '30rem' }"
-                    :breakpoints="{ '640px': '90vw' }" @hide="cancelDelete">
-                    <div class="p-m-3">
-                        <p>确认要删除选中的收藏吗？</p>
-                        <div v-if="selectedBookmark" class="mt-2 text-sm text-600">
-                            <div><strong>用户ID：</strong> {{ selectedBookmark.userId }}</div>
-                            <div><strong>实体：</strong> {{ selectedBookmark.entityType }} / {{ selectedBookmark.entityId
-                            }}</div>
-                        </div>
-                    </div>
+                            <div class="px-2">
+                                <NDescriptions bordered :column="1" label-placement="left" size="small">
+                                    <NDescriptionsItem label="用户ID">
+                                        <NText strong>{{ selectedBookmark.userId }}</NText>
+                                    </NDescriptionsItem>
+                                    <NDescriptionsItem label="实体类型">
+                                        <NText strong>{{ selectedBookmark.entityType }}</NText>
+                                    </NDescriptionsItem>
+                                    <NDescriptionsItem label="实体ID">
+                                        <NText strong>{{ selectedBookmark.entityId }}</NText>
+                                    </NDescriptionsItem>
+                                    <NDescriptionsItem v-if="selectedBookmark.note" label="备注">
+                                        <NText depth="3" class="text-sm">{{ selectedBookmark.note }}</NText>
+                                    </NDescriptionsItem>
+                                </NDescriptions>
+                            </div>
+                        </NSpace>
+                    </template>
+
                     <template #footer>
-                        <Button label="取消" icon="pi pi-times" class="p-button-text" @click="cancelDelete" />
-                        <Button label="确认删除" icon="pi pi-trash" severity="danger" @click="confirmDelete" />
+                        <div class="flex justify-end gap-2">
+                            <Button label="取消" icon="pi pi-times" severity="secondary" text @click="cancelDelete" />
+                            <Button label="确认删除" icon="pi pi-trash" severity="danger" :loading="loading"
+                                @click="confirmDelete" />
+                        </div>
                     </template>
                 </Dialog>
             </div>

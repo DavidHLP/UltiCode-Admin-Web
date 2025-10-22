@@ -196,6 +196,54 @@ async function removeWord(word: SensitiveWordView) {
         });
     }
 }
+
+async function toggleWordActive(word: SensitiveWordView) {
+    const newStatus = !word.active;
+    const payload: SensitiveWordUpsertPayload = {
+        word: word.word,
+        category: word.category ?? undefined,
+        level: word.level as SensitiveWordUpsertPayload['level'],
+        replacement: word.replacement ?? undefined,
+        description: word.description ?? undefined,
+        active: newStatus
+    };
+    try {
+        await updateSensitiveWord(word.id, payload);
+        toast.add({
+            severity: 'success',
+            summary: '状态更新',
+            detail: `敏感词已${newStatus ? '启用' : '停用'}`,
+            life: 3000
+        });
+        await loadWords();
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: '更新失败',
+            detail: (error as Error)?.message ?? '更新状态失败',
+            life: 4000
+        });
+    }
+}
+
+function copyWord(word: SensitiveWordView) {
+    const info = `${word.word} (${word.level})`;
+    navigator.clipboard.writeText(word.word).then(() => {
+        toast.add({
+            severity: 'success',
+            summary: '复制成功',
+            detail: `已复制: ${info}`,
+            life: 3000
+        });
+    }).catch(() => {
+        toast.add({
+            severity: 'error',
+            summary: '复制失败',
+            detail: '无法访问剪贴板',
+            life: 3000
+        });
+    });
+}
 </script>
 
 <template>
@@ -204,21 +252,17 @@ async function removeWord(word: SensitiveWordView) {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="敏感词 / 描述" style="min-width: 16rem" @keyup.enter="onSearch" />
-                        <InputText v-model="categoryFilter" placeholder="分类" style="min-width: 12rem" @keyup.enter="onSearch" />
-                        <Dropdown v-model="levelFilter" :options="levelOptions" optionLabel="label" optionValue="value" placeholder="处理等级" style="width: 12rem" />
-                        <Dropdown
-                            v-model="activeFilter"
-                            :options="[
-                                { label: '全部状态', value: null },
-                                { label: '启用', value: true },
-                                { label: '停用', value: false }
-                            ]"
-                            optionLabel="label"
-                            optionValue="value"
-                            placeholder="状态"
-                            style="width: 10rem"
-                        />
+                        <InputText v-model="keyword" placeholder="敏感词 / 描述" style="min-width: 16rem"
+                            @keyup.enter="onSearch" />
+                        <InputText v-model="categoryFilter" placeholder="分类" style="min-width: 12rem"
+                            @keyup.enter="onSearch" />
+                        <Dropdown v-model="levelFilter" :options="levelOptions" optionLabel="label" optionValue="value"
+                            placeholder="处理等级" style="width: 12rem" />
+                        <Dropdown v-model="activeFilter" :options="[
+                            { label: '全部状态', value: null },
+                            { label: '启用', value: true },
+                            { label: '停用', value: false }
+                        ]" optionLabel="label" optionValue="value" placeholder="状态" style="width: 10rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -227,40 +271,45 @@ async function removeWord(word: SensitiveWordView) {
                     </div>
                 </div>
 
-                <DataTable
-                    :value="words"
-                    :loading="loading"
-                    :paginator="true"
-                    :lazy="true"
-                    :rows="size"
-                    :totalRecords="total"
-                    :rowsPerPageOptions="[10, 20, 50]"
-                    :first="(page - 1) * size"
-                    dataKey="id"
-                    responsiveLayout="scroll"
-                    @page="onPageChange"
-                >
+                <DataTable :value="words" :loading="loading" :paginator="true" :lazy="true" :rows="size"
+                    :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size" dataKey="id"
+                    responsiveLayout="scroll" @page="onPageChange">
                     <Column field="word" header="敏感词" sortable />
                     <Column field="category" header="分类" sortable />
                     <Column field="level" header="处理方式" sortable />
                     <Column field="replacement" header="替换词" />
                     <Column field="description" header="描述">
                         <template #body="slotProps">
-                            <span class="block text-overflow-ellipsis whitespace-nowrap" style="max-width: 16rem">{{ slotProps.data.description ?? '-' }}</span>
+                            <span class="block text-overflow-ellipsis whitespace-nowrap" style="max-width: 16rem">{{
+                                slotProps.data.description ?? '-' }}</span>
                         </template>
                     </Column>
                     <Column field="active" header="状态">
                         <template #body="slotProps">
-                            <Tag :value="slotProps.data.active ? '启用' : '停用'" :severity="slotProps.data.active ? 'success' : 'danger'" />
+                            <Tag :value="slotProps.data.active ? '启用' : '停用'"
+                                :severity="slotProps.data.active ? 'success' : 'danger'" />
                         </template>
                     </Column>
                     <Column field="updatedAt" header="更新时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <div class="flex gap-2">
-                                <Button label="编辑" icon="pi pi-pencil" size="small" severity="secondary" @click="openEdit(slotProps.data)" />
-                                <Button label="删除" icon="pi pi-trash" size="small" severity="danger" @click="removeWord(slotProps.data)" />
-                            </div>
+                            <SplitButton label="编辑" icon="pi pi-pencil" size="small" severity="secondary" :model="[
+                                {
+                                    label: '删除',
+                                    icon: 'pi pi-trash',
+                                    command: () => removeWord(slotProps.data)
+                                },
+                                {
+                                    label: slotProps.data.active ? '停用' : '启用',
+                                    icon: slotProps.data.active ? 'pi pi-ban' : 'pi pi-check',
+                                    command: () => toggleWordActive(slotProps.data)
+                                },
+                                {
+                                    label: '复制词语',
+                                    icon: 'pi pi-copy',
+                                    command: () => copyWord(slotProps.data)
+                                }
+                            ]" @click="openEdit(slotProps.data)" />
                         </template>
                     </Column>
                 </DataTable>
@@ -272,7 +321,8 @@ async function removeWord(word: SensitiveWordView) {
         <div class="flex flex-column gap-3">
             <InputText v-model="form.word" placeholder="敏感词" />
             <InputText v-model="form.category" placeholder="分类 (可选)" />
-            <Dropdown v-model="form.level" :options="levelOptions.slice(1)" optionLabel="label" optionValue="value" placeholder="处理等级" />
+            <Dropdown v-model="form.level" :options="levelOptions.slice(1)" optionLabel="label" optionValue="value"
+                placeholder="处理等级" />
             <InputText v-model="form.replacement" placeholder="替换词 (替换模式下可选)" />
             <Textarea v-model="form.description" rows="4" placeholder="描述" autoResize />
             <div class="flex items-center gap-2">
