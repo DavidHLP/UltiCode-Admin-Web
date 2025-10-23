@@ -17,6 +17,12 @@ export interface ProblemSummary {
     categoryId?: number | null;
     categoryName?: string | null;
     isPublic: boolean;
+    lifecycleStatus: string;
+    reviewStatus: string;
+    activeDatasetId?: number | null;
+    reviewedBy?: number | null;
+    reviewedAt?: string | null;
+    submittedForReviewAt?: string | null;
     timeLimitMs?: number | null;
     memoryLimitKb?: number | null;
     updatedAt?: string | null;
@@ -55,6 +61,12 @@ export interface ProblemDetail {
     timeLimitMs?: number | null;
     memoryLimitKb?: number | null;
     isPublic: boolean;
+    lifecycleStatus: string;
+    reviewStatus: string;
+    reviewedBy?: number | null;
+    reviewedAt?: string | null;
+    reviewNotes?: string | null;
+    submittedForReviewAt?: string | null;
     activeDatasetId?: number | null;
     meta?: Record<string, unknown> | null;
     createdAt?: string | null;
@@ -74,6 +86,8 @@ export interface ProblemQuery {
     difficultyId?: number | null;
     categoryId?: number | null;
     isPublic?: boolean | null;
+    lifecycleStatus?: string;
+    reviewStatus?: string;
     langCode?: string;
 }
 
@@ -105,6 +119,23 @@ export interface ProblemUpsertPayload {
     statements: ProblemStatementInput[];
     tagIds?: number[];
     languageConfigs?: ProblemLanguageConfigInput[];
+}
+
+export interface ProblemSubmitReviewInput {
+    operatorId?: number | null;
+    notes?: string;
+}
+
+export interface ProblemReviewDecisionInput {
+    approved: boolean;
+    reviewerId?: number | null;
+    notes?: string;
+}
+
+export interface ProblemPublishInput {
+    publish: boolean;
+    operatorId?: number | null;
+    notes?: string;
 }
 
 export interface DictionaryOption {
@@ -163,6 +194,33 @@ export function updateProblem(problemId: number, payload: ProblemUpsertPayload) 
     return requestData<ProblemDetail>({
         url: `/api/admin/problems/${problemId}`,
         method: 'put',
+        data: payload
+    });
+}
+
+export function submitProblemForReview(
+    problemId: number,
+    payload?: ProblemSubmitReviewInput | null
+) {
+    return requestData<ProblemDetail>({
+        url: `/api/admin/problems/${problemId}/submit-review`,
+        method: 'post',
+        data: payload ?? null
+    });
+}
+
+export function reviewProblem(problemId: number, payload: ProblemReviewDecisionInput) {
+    return requestData<ProblemDetail>({
+        url: `/api/admin/problems/${problemId}/review`,
+        method: 'post',
+        data: payload
+    });
+}
+
+export function publishProblem(problemId: number, payload: ProblemPublishInput) {
+    return requestData<ProblemDetail>({
+        url: `/api/admin/problems/${problemId}/publish`,
+        method: 'post',
         data: payload
     });
 }
