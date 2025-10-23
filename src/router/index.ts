@@ -45,6 +45,29 @@ const routes: RouteRecordRaw[] = [
                 }
             },
             {
+                path: '/admin/contests',
+                name: 'adminContests',
+                component: () => import('@/views/contests/ContestList.vue'),
+                meta: {
+                    requiresAuth: true,
+                    breadcrumb: [{ label: '竞赛管理' }, { label: '比赛列表' }]
+                }
+            },
+            {
+                path: '/admin/contests/:contestId',
+                name: 'adminContestDetail',
+                component: () => import('@/views/contests/ContestDetail.vue'),
+                props: true,
+                meta: {
+                    requiresAuth: true,
+                    breadcrumb: [
+                        { label: '竞赛管理' },
+                        { label: '比赛列表', to: '/admin/contests' },
+                        { label: '比赛详情' }
+                    ]
+                }
+            },
+            {
                 path: '/admin/categories',
                 name: 'adminCategories',
                 component: () => import('@/views/admin/CategoryList.vue'),

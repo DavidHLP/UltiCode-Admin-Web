@@ -154,6 +154,10 @@ const model = ref([
         ]
     },
     {
+        label: '竞赛管理',
+        items: [{ label: '比赛列表', icon: 'pi pi-fw pi-flag', to: '/admin/contests' }]
+    },
+    {
         label: '社区互动',
         items: [
             { label: '评论管理', icon: 'pi pi-fw pi-comments', to: '/admin/interaction/comments' },
