@@ -253,7 +253,7 @@ function getRiskSeverity(risk: string | null | undefined): TagSeverity {
                                     command: () => viewReactionDetail(slotProps.data)
                                 },
                                 {
-                                    label: '复制ID',
+                                    label: '复制信息',
                                     icon: 'pi pi-copy',
                                     command: () => copyReactionInfo(slotProps.data)
                                 }

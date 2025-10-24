@@ -54,12 +54,12 @@ async function loadLanguages() {
     try {
         const query = keyword.value.trim();
         const data = await fetchLanguages(
-                {
-                    keyword: query || undefined,
-                    isActive: activeFilter.value ?? undefined,
-                    page: page.value,
-                    size: size.value
-                }
+            {
+                keyword: query || undefined,
+                isActive: activeFilter.value ?? undefined,
+                page: page.value,
+                size: size.value
+            }
         );
         languages.value = data.items ?? [];
         total.value = data.total ?? 0;
@@ -204,20 +204,10 @@ function onPageChange(event: { page: number; rows: number }) {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText
-                            v-model="keyword"
-                            placeholder="搜索语言编码或名称"
-                            @keyup.enter="onSearch"
-                            style="min-width: 18rem"
-                        />
-                        <Dropdown
-                            v-model="activeFilter"
-                            :options="activeOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            placeholder="启用状态"
-                            style="min-width: 10rem"
-                        />
+                        <InputText v-model="keyword" placeholder="搜索语言编码或名称" @keyup.enter="onSearch"
+                            style="min-width: 18rem" />
+                        <Dropdown v-model="activeFilter" :options="activeOptions" optionLabel="label"
+                            optionValue="value" placeholder="启用状态" style="min-width: 10rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -226,19 +216,9 @@ function onPageChange(event: { page: number; rows: number }) {
                     </div>
                 </div>
 
-                <DataTable
-                    :value="languages"
-                    dataKey="id"
-                    :loading="loading"
-                    :rows="size"
-                    :paginator="true"
-                    :lazy="true"
-                    :totalRecords="total"
-                    :rowsPerPageOptions="[10, 20, 50]"
-                    :first="(page - 1) * size"
-                    responsiveLayout="scroll"
-                    @page="onPageChange"
-                >
+                <DataTable :value="languages" dataKey="id" :loading="loading" :rows="size" :paginator="true"
+                    :lazy="true" :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size"
+                    responsiveLayout="scroll" @page="onPageChange">
                     <Column field="displayName" header="语言名称" style="min-width: 12rem" />
                     <Column field="code" header="语言编码" style="min-width: 10rem" />
                     <Column field="runtimeImage" header="运行镜像" style="min-width: 14rem">
@@ -258,16 +238,13 @@ function onPageChange(event: { page: number; rows: number }) {
                     </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <div class="flex gap-2">
-                                <Button label="编辑" icon="pi pi-pencil" text @click="openEdit(data)" />
-                                <Button
-                                    label="删除"
-                                    icon="pi pi-trash"
-                                    text
-                                    severity="danger"
-                                    @click="removeLanguage(data)"
-                                />
-                            </div>
+                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
+                                {
+                                    label: '删除语言',
+                                    icon: 'pi pi-trash',
+                                    command: () => removeLanguage(data)
+                                }
+                            ]" @click="openEdit(data)" />
                         </template>
                     </Column>
                     <template #empty>
@@ -278,24 +255,12 @@ function onPageChange(event: { page: number; rows: number }) {
         </div>
     </div>
 
-    <Dialog
-        v-model:visible="dialogVisible"
-        modal
-        :header="editingId === null ? '新建语言' : '编辑语言'"
-        :style="{ width: '32rem' }"
-        :breakpoints="{ '960px': '90vw', '640px': '95vw' }"
-        @hide="closeDialog"
-    >
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建语言' : '编辑语言'"
+        :style="{ width: '32rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
         <form class="form-grid" @submit.prevent="submitForm">
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="lang-code">语言编码</label>
-                <InputText
-                    id="lang-code"
-                    v-model="form.code"
-                    placeholder="如 cpp17"
-                    autofocus
-                    class="w-full"
-                />
+                <InputText id="lang-code" v-model="form.code" placeholder="如 cpp17" autofocus class="w-full" />
             </div>
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="lang-name">展示名称</label>
@@ -303,12 +268,7 @@ function onPageChange(event: { page: number; rows: number }) {
             </div>
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="lang-image">运行镜像</label>
-                <InputText
-                    id="lang-image"
-                    v-model="form.runtimeImage"
-                    placeholder="容器镜像地址，可留空"
-                    class="w-full"
-                />
+                <InputText id="lang-image" v-model="form.runtimeImage" placeholder="容器镜像地址，可留空" class="w-full" />
             </div>
             <div class="field flex-row items-center gap-3">
                 <label class="font-medium text-sm mb-0 block">启用状态</label>

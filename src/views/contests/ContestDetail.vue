@@ -2,7 +2,6 @@
 import type {
     ContestRegistration,
     ContestRegistrationDecisionPayload,
-    ContestRegistrationQuery,
     ContestRegistrationStatusCode,
     ContestScoreboardRecord,
     ProblemSummaryOption,
@@ -11,12 +10,12 @@ import type {
 import {
     addContestParticipants,
     createContestRegistration,
+    decideContestRegistrations,
     fetchContest,
     fetchContestOptions,
     fetchContestRegistrations,
     fetchContestScoreboard,
     fetchContestSubmissions,
-    decideContestRegistrations,
     removeContestParticipant,
     saveContestProblems,
     searchContestProblems,
@@ -359,7 +358,7 @@ function buildUpsertPayload(): ContestUpsertPayload | null {
         toast.add({ severity: 'warn', summary: '提示', detail: '比赛标题不能为空', life: 3000 });
         return null;
     }
-    if (payload.maxParticipants !== null && payload.maxParticipants <= 0) {
+    if (payload.maxParticipants !== null && payload.maxParticipants !== undefined && payload.maxParticipants <= 0) {
         toast.add({ severity: 'warn', summary: '提示', detail: '参赛人数上限必须为正整数', life: 3000 });
         return null;
     }
@@ -1005,8 +1004,8 @@ const pendingSubmissionTag = computed(() => {
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <AutoComplete v-model="selectedParticipants" :suggestions="participantSearchResults"
-                            optionLabel="username" dataKey="id" :completeMethod="completeParticipantSearch"
-                            dropdown multiple :loading="participantSearchLoading" style="min-width: 20rem"
+                            optionLabel="username" dataKey="id" :completeMethod="completeParticipantSearch" dropdown
+                            multiple :loading="participantSearchLoading" style="min-width: 20rem"
                             placeholder="搜索用户名或邮箱">
                             <template #option="{ option }">
                                 <div class="flex flex-column">
@@ -1071,23 +1070,20 @@ const pendingSubmissionTag = computed(() => {
                     <div class="flex items-center gap-2">
                         <i class="pi pi-user-edit text-xl text-primary"></i>
                         <h3 class="text-lg font-semibold m-0">报名审核</h3>
-                        <Tag v-if="detail?.pendingRegistrationCount"
-                            :value="`待审核 ${detail?.pendingRegistrationCount}`" severity="warning" />
+                        <Tag v-if="detail?.pendingRegistrationCount" :value="`待审核 ${detail?.pendingRegistrationCount}`"
+                            severity="warning" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Dropdown v-model="registrationStatusFilter" :options="registrationStatusOptionsItems"
-                            optionLabel="label" optionValue="value" placeholder="全部状态" size="small"
-                            :showClear="true" />
+                            optionLabel="label" optionValue="value" placeholder="全部状态" size="small" :showClear="true" />
                         <Button icon="pi pi-refresh" text rounded size="small" :loading="registrationsLoading"
                             @click="loadRegistrations" />
                     </div>
                 </div>
                 <div class="flex gap-2 flex-wrap mb-3">
                     <AutoComplete v-model="registrationInviteOption" :suggestions="registrationInviteSuggestions"
-                        dropdown optionLabel="username" dataKey="id"
-                        :completeMethod="completeRegistrationInviteSearch"
-                        :loading="registrationInviteLoading" placeholder="搜索用户以创建报名"
-                        style="min-width: 20rem">
+                        dropdown optionLabel="username" dataKey="id" :completeMethod="completeRegistrationInviteSearch"
+                        :loading="registrationInviteLoading" placeholder="搜索用户以创建报名" style="min-width: 20rem">
                         <template #option="{ option }">
                             <div class="flex flex-column">
                                 <span class="font-medium">{{ participantOptionLabel(option) }}</span>
@@ -1095,9 +1091,8 @@ const pendingSubmissionTag = computed(() => {
                             </div>
                         </template>
                     </AutoComplete>
-                    <Button label="创建报名" icon="pi pi-user-plus" size="small"
-                        :loading="creatingRegistration" :disabled="!registrationInviteOption"
-                        @click="createRegistrationInvite" />
+                    <Button label="创建报名" icon="pi pi-user-plus" size="small" :loading="creatingRegistration"
+                        :disabled="!registrationInviteOption" @click="createRegistrationInvite" />
                 </div>
                 <div class="text-sm text-color-secondary mb-3">
                     报名窗口：
@@ -1110,9 +1105,8 @@ const pendingSubmissionTag = computed(() => {
                     </span>
                 </div>
                 <Divider class="my-3" />
-                <DataTable :value="registrations" :loading="registrationsLoading" dataKey="id"
-                    :rows="registrationSize" :paginator="true" :lazy="true"
-                    :totalRecords="registrationTotal" :rowsPerPageOptions="[10, 20, 50]"
+                <DataTable :value="registrations" :loading="registrationsLoading" dataKey="id" :rows="registrationSize"
+                    :paginator="true" :lazy="true" :totalRecords="registrationTotal" :rowsPerPageOptions="[10, 20, 50]"
                     @page="onRegistrationPageChange" responsiveLayout="stack" stripedRows>
                     <template #empty>
                         <NEmpty description="暂无报名记录" class="py-6">
@@ -1161,12 +1155,16 @@ const pendingSubmissionTag = computed(() => {
                     </Column>
                     <Column header="操作" style="width: 10rem">
                         <template #body="{ data }">
-                            <div class="flex gap-2">
-                                <Button v-if="data.status === 'pending'" label="通过" icon="pi pi-check" size="small"
-                                    severity="success" text @click="approveRegistration(data)" />
-                                <Button v-if="data.status === 'pending'" label="驳回" icon="pi pi-times"
-                                    size="small" severity="danger" text @click="rejectRegistration(data)" />
-                            </div>
+                            <SplitButton v-if="data.status === 'pending'" label="通过" icon="pi pi-check"
+                                severity="success" size="small" :model="[
+                                    {
+                                        label: '驳回报名',
+                                        icon: 'pi pi-times',
+                                        command: () => rejectRegistration(data)
+                                    }
+                                ]" @click="approveRegistration(data)" />
+                            <Tag v-else :value="registrationStatusLabel(data.status)"
+                                :severity="registrationStatusSeverity(data.status)" />
                         </template>
                     </Column>
                 </DataTable>
@@ -1432,10 +1430,10 @@ const pendingSubmissionTag = computed(() => {
                     <div class="flex flex-col md:flex-row gap-4 mb-3">
                         <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-search-${index}`">题目搜索</label>
-                            <AutoComplete :id="`problem-search-${index}`" v-model="problemDraft[index].option"
-                                :suggestions="problemSuggestions" optionLabel="title" dataKey="id" dropdown
-                                :loading="problemSearchLoading" :completeMethod="completeProblemSearch"
-                                placeholder="输入标题或别名关键词"
+                            <AutoComplete v-if="problemDraft[index]" :id="`problem-search-${index}`"
+                                v-model="problemDraft[index].option" :suggestions="problemSuggestions"
+                                optionLabel="title" dataKey="id" dropdown :loading="problemSearchLoading"
+                                :completeMethod="completeProblemSearch" placeholder="输入标题或别名关键词"
                                 @item-select="({ value }) => handleProblemSelect(value, index)"
                                 @clear="clearProblemSelection(index)">
                                 <template #option="{ option }">

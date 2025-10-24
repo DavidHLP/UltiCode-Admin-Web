@@ -293,7 +293,7 @@ function copyWord(word: SensitiveWordView) {
                     <Column field="updatedAt" header="更新时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <SplitButton label="编辑" icon="pi pi-pencil" size="small" severity="secondary" :model="[
+                            <SplitButton label="编辑" icon="pi pi-pencil" size="small" severity="info" :model="[
                                 {
                                     label: '删除',
                                     icon: 'pi pi-trash',

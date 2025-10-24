@@ -248,7 +248,7 @@ function buildPayload(): ContestUpsertPayload | null {
         });
         return null;
     }
-    if (payload.maxParticipants !== null && payload.maxParticipants <= 0) {
+    if (payload.maxParticipants !== null && payload.maxParticipants !== undefined && payload.maxParticipants <= 0) {
         toast.add({
             severity: 'warn',
             summary: '提示',
@@ -385,7 +385,7 @@ function formatDate(value?: string | null) {
 }
 
 function openContestDetail(contest: ContestSummary) {
-    router.push({ name: 'adminContestDetail', params: { contestId: contest.id } });
+    router.push({ name: 'contestDetail', params: { contestId: contest.id } });
 }
 
 function onSearch() {
@@ -480,13 +480,18 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
                     <Column field="participantCount" header="参赛人数" style="min-width: 6rem" />
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <div class="flex gap-2">
-                                <Button label="详情" icon="pi pi-eye" text @click="openContestDetail(data)" />
-                                <Button label="编辑" icon="pi pi-pencil" text severity="secondary"
-                                    @click="openEditDialog(data)" />
-                                <Button label="删除" icon="pi pi-trash" text severity="danger"
-                                    @click="removeContest(data)" />
-                            </div>
+                            <SplitButton label="查看详情" icon="pi pi-eye" severity="info" size="small" :model="[
+                                {
+                                    label: '编辑比赛',
+                                    icon: 'pi pi-pencil',
+                                    command: () => openEditDialog(data)
+                                },
+                                {
+                                    label: '删除比赛',
+                                    icon: 'pi pi-trash',
+                                    command: () => removeContest(data)
+                                }
+                            ]" @click="openContestDetail(data)" />
                         </template>
                     </Column>
                     <template #empty>
@@ -546,8 +551,8 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
                 </div>
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-max-participants">人数上限 (可选)</label>
-                    <InputNumber id="contest-max-participants" v-model="formModel.maxParticipants"
-                        :useGrouping="false" :min="1" placeholder="不限请留空" />
+                    <InputNumber id="contest-max-participants" v-model="formModel.maxParticipants" :useGrouping="false"
+                        :min="1" placeholder="不限请留空" />
                 </div>
             </div>
 
@@ -568,13 +573,13 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-penalty">罚时 (分钟)</label>
-                    <InputNumber id="contest-penalty" v-model="formModel.penaltyPerWrong" :useGrouping="false"
-                        :min="0" placeholder="默认 20" />
+                    <InputNumber id="contest-penalty" v-model="formModel.penaltyPerWrong" :useGrouping="false" :min="0"
+                        placeholder="默认 20" />
                 </div>
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-freeze">封榜提前 (分钟)</label>
-                    <InputNumber id="contest-freeze" v-model="formModel.scoreboardFreezeMinutes"
-                        :useGrouping="false" :min="0" placeholder="默认 0" />
+                    <InputNumber id="contest-freeze" v-model="formModel.scoreboardFreezeMinutes" :useGrouping="false"
+                        :min="0" placeholder="默认 0" />
                 </div>
             </div>
 

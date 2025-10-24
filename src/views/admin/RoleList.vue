@@ -10,8 +10,8 @@ import {
     type RoleUpdatePayload,
     type RoleView
 } from '@/api/admin/role';
-import { useAuthStore } from '@/stores/auth';
 import { useSensitiveDialog } from '@/composables/useSensitiveDialog';
+import { useAuthStore } from '@/stores/auth';
 import InputOtp from 'primevue/inputotp';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
@@ -144,9 +144,9 @@ async function submitForm() {
     const remarkRaw = form.value.remark?.trim();
     const remark = remarkRaw === undefined || remarkRaw === '' ? null : remarkRaw;
     const permissionIds =
-            form.value.permissionIds && form.value.permissionIds.length > 0
-                ? Array.from(new Set(form.value.permissionIds))
-                : [];
+        form.value.permissionIds && form.value.permissionIds.length > 0
+            ? Array.from(new Set(form.value.permissionIds))
+            : [];
 
     const sensitiveToken = await acquireSensitiveToken();
     if (!sensitiveToken) {
@@ -270,11 +270,13 @@ async function acquireSensitiveToken(): Promise<string | null> {
                     </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <div class="flex gap-2">
-                                <Button label="编辑" icon="pi pi-pencil" text @click="openEdit(data)" />
-                                <Button label="删除" icon="pi pi-trash" text severity="danger"
-                                    @click="removeRole(data)" />
-                            </div>
+                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
+                                {
+                                    label: '删除角色',
+                                    icon: 'pi pi-trash',
+                                    command: () => removeRole(data)
+                                }
+                            ]" @click="openEdit(data)" />
                         </template>
                     </Column>
                     <template #empty>
@@ -315,8 +317,7 @@ async function acquireSensitiveToken(): Promise<string | null> {
         </form>
     </Dialog>
 
-    <Dialog v-model:visible="twoFactorDialogVisible" modal header="二次验证"
-        :style="{ width: '22rem' }" :draggable="false">
+    <Dialog v-model:visible="twoFactorDialogVisible" modal header="二次验证" :style="{ width: '22rem' }" :draggable="false">
         <div class="space-y-3">
             <p class="text-sm text-surface-500 dark:text-surface-300">
                 为确保安全，请输入绑定的 6 位二次验证码。

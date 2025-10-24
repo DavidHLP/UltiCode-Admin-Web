@@ -141,15 +141,6 @@ function cancelDelete() {
     selectedBookmark.value = null;
 }
 
-// SplitButton 菜单项
-const getActionItems = (bookmark: BookmarkView) => [
-    {
-        label: '删除',
-        icon: 'pi pi-trash',
-        command: () => promptDelete(bookmark)
-    }
-];
-
 function getSensitiveLabel(flag: boolean | null | undefined) {
     return flag ? '敏感' : '正常';
 }
@@ -247,12 +238,16 @@ function getRiskSeverity(risk: string | null | undefined): TagSeverity {
                     <Column field="createdAt" header="创建时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <SplitButton label="操作" :model="getActionItems(slotProps.data)" size="small"
-                                severity="secondary" @click="promptDelete(slotProps.data)">
-                                <template #icon>
-                                    <i class="pi pi-cog"></i>
-                                </template>
-                            </SplitButton>
+                            <SplitButton label="删除" icon="pi pi-trash" severity="danger" size="small" :model="[
+                                {
+                                    label: '查看详情',
+                                    icon: 'pi pi-eye',
+                                    command: () => {
+                                        const key = getRowKey(slotProps.data);
+                                        expandedRows[key] = !expandedRows[key];
+                                    }
+                                }
+                            ]" @click="promptDelete(slotProps.data)" />
                         </template>
                     </Column>
 
@@ -303,7 +298,8 @@ function getRiskSeverity(risk: string | null | undefined): TagSeverity {
                                             <span v-else>-</span>
                                         </NDescriptionsItem>
                                         <NDescriptionsItem label="命中词">
-                                            <div v-if="slotProps.data.sensitiveHits?.length" class="flex gap-1 flex-wrap">
+                                            <div v-if="slotProps.data.sensitiveHits?.length"
+                                                class="flex gap-1 flex-wrap">
                                                 <Tag v-for="hit in slotProps.data.sensitiveHits" :key="hit"
                                                     severity="danger" :value="hit" />
                                             </div>

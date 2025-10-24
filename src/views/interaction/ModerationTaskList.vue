@@ -318,14 +318,14 @@ function formatCommentPreview(comment: CommentDetail | undefined) {
                     <Column field="updatedAt" header="更新时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <SplitButton label="审核" icon="pi pi-check" severity="success" size="small" :model="[
+                            <SplitButton label="审核" icon="pi pi-check" severity="info" size="small" :model="[
                                 {
-                                    label: '认领',
+                                    label: '认领任务',
                                     icon: 'pi pi-user-plus',
                                     command: () => takeTask(slotProps.data)
                                 },
                                 {
-                                    label: '指派',
+                                    label: '指派任务',
                                     icon: 'pi pi-share-alt',
                                     command: () => openAssignDialog(slotProps.data)
                                 },
@@ -358,7 +358,7 @@ function formatCommentPreview(comment: CommentDetail | undefined) {
                                         <NDescriptionsItem label="任务ID">{{ getTaskDetail(slotProps.data.id)!.task.id }}
                                         </NDescriptionsItem>
                                         <NDescriptionsItem label="状态">{{ getTaskDetail(slotProps.data.id)!.task.status
-                                            }}</NDescriptionsItem>
+                                        }}</NDescriptionsItem>
                                         <NDescriptionsItem label="风险等级">{{
                                             getTaskDetail(slotProps.data.id)!.task.riskLevel ?? '-' }}
                                         </NDescriptionsItem>
@@ -366,7 +366,7 @@ function formatCommentPreview(comment: CommentDetail | undefined) {
                                             getTaskDetail(slotProps.data.id)!.task.priority ?? '-' }}
                                         </NDescriptionsItem>
                                         <NDescriptionsItem label="来源">{{ getTaskDetail(slotProps.data.id)!.task.source
-                                            }}</NDescriptionsItem>
+                                        }}</NDescriptionsItem>
                                         <NDescriptionsItem label="创建时间">{{
                                             getTaskDetail(slotProps.data.id)!.task.createdAt }}</NDescriptionsItem>
                                     </NDescriptions>
