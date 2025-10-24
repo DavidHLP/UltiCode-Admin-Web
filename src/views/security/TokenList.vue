@@ -157,13 +157,12 @@ function tokenStatusLabel(item: AuthTokenView) {
                 <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
                     <div class="grid gap-3 grid-cols-1 md:grid-cols-3 w-full md:w-auto">
                         <span class="p-input-icon-left">
-                            <i class="pi pi-user" />
                             <InputText v-model="userIdFilter" placeholder="按用户ID过滤" />
                         </span>
                         <Dropdown v-model="kindFilter" :options="kindOptions" optionLabel="label" optionValue="value"
                             placeholder="按类型过滤" class="w-full" />
-                        <Dropdown v-model="revokedFilter" :options="revokedOptions" optionLabel="label" optionValue="value"
-                            class="w-full" />
+                        <Dropdown v-model="revokedFilter" :options="revokedOptions" optionLabel="label"
+                            optionValue="value" class="w-full" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="查询" icon="pi pi-search" @click="onSearch" />
@@ -208,8 +207,7 @@ function tokenStatusLabel(item: AuthTokenView) {
         </div>
     </div>
 
-    <Dialog v-model:visible="twoFactorDialogVisible" modal header="二次验证"
-        :style="{ width: '22rem' }" :draggable="false">
+    <Dialog v-model:visible="twoFactorDialogVisible" modal header="二次验证" :style="{ width: '22rem' }" :draggable="false">
         <div class="space-y-3">
             <p class="text-sm text-surface-500 dark:text-surface-300">请输入 6 位二次验证码以执行敏感操作。</p>
             <div class="flex justify-center">

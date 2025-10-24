@@ -2,6 +2,7 @@ import AppLayout from '@/layout/AppLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 
+// ==================== 仪表盘路由 ====================
 const dashboardRoute: RouteRecordRaw = {
     path: '',
     name: 'dashboard',
@@ -12,31 +13,33 @@ const dashboardRoute: RouteRecordRaw = {
     }
 };
 
+// ==================== 权限管理路由 ====================
 const accountRoutes: RouteRecordRaw[] = [
     {
-        path: '/admin/users',
-        name: 'adminUsers',
+        path: '/account/users',
+        name: 'users',
         component: () => import('@/views/admin/UserList.vue'),
         meta: {
             requiresAuth: true,
-            breadcrumb: [{ label: '账户中心' }, { label: '用户管理' }]
+            breadcrumb: [{ label: '权限管理' }, { label: '用户管理' }]
         }
     },
     {
-        path: '/admin/roles',
-        name: 'adminRoles',
+        path: '/account/roles',
+        name: 'roles',
         component: () => import('@/views/admin/RoleList.vue'),
         meta: {
             requiresAuth: true,
-            breadcrumb: [{ label: '账户中心' }, { label: '角色管理' }]
+            breadcrumb: [{ label: '权限管理' }, { label: '角色管理' }]
         }
     }
 ];
 
+// ==================== 安全中心路由 ====================
 const securityRoutes: RouteRecordRaw[] = [
     {
-        path: '/admin/security/permissions',
-        name: 'adminSecurityPermissions',
+        path: '/security/permissions',
+        name: 'permissions',
         component: () => import('@/views/security/PermissionList.vue'),
         meta: {
             requiresAuth: true,
@@ -44,8 +47,8 @@ const securityRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/security/tokens',
-        name: 'adminSecurityTokens',
+        path: '/security/tokens',
+        name: 'authTokens',
         component: () => import('@/views/security/TokenList.vue'),
         meta: {
             requiresAuth: true,
@@ -53,8 +56,8 @@ const securityRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/security/audit-logs',
-        name: 'adminSecurityAuditLogs',
+        path: '/security/audit-logs',
+        name: 'auditLogs',
         component: () => import('@/views/security/AuditLogList.vue'),
         meta: {
             requiresAuth: true,
@@ -63,10 +66,11 @@ const securityRoutes: RouteRecordRaw[] = [
     }
 ];
 
+// ==================== 题库管理路由 ====================
 const problemRoutes: RouteRecordRaw[] = [
     {
-        path: '/admin/problems',
-        name: 'adminProblems',
+        path: '/problems',
+        name: 'problems',
         component: () => import('@/views/admin/ProblemList.vue'),
         meta: {
             requiresAuth: true,
@@ -74,20 +78,20 @@ const problemRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/problems/new',
-        name: 'adminProblemsCreate',
+        path: '/problems/new',
+        name: 'problemsCreate',
         component: () => import('@/views/admin/ProblemEdit.vue'),
-        redirect: { name: 'adminProblemsCreateBasic' },
+        redirect: { name: 'problemsCreateBasic' },
         children: [
             {
                 path: 'basic',
-                name: 'adminProblemsCreateBasic',
+                name: 'problemsCreateBasic',
                 component: () => import('@/views/admin/problem-editor/ProblemEditorBasics.vue'),
                 meta: {
                     requiresAuth: true,
                     breadcrumb: [
                         { label: '题库管理' },
-                        { label: '题目列表', to: '/admin/problems' },
+                        { label: '题目列表', to: '/problems' },
                         { label: '新建题目' },
                         { label: '基本信息' }
                     ]
@@ -95,13 +99,13 @@ const problemRoutes: RouteRecordRaw[] = [
             },
             {
                 path: 'statements',
-                name: 'adminProblemsCreateStatements',
+                name: 'problemsCreateStatements',
                 component: () => import('@/views/admin/problem-editor/ProblemEditorStatements.vue'),
                 meta: {
                     requiresAuth: true,
                     breadcrumb: [
                         { label: '题库管理' },
-                        { label: '题目列表', to: '/admin/problems' },
+                        { label: '题目列表', to: '/problems' },
                         { label: '新建题目' },
                         { label: '题面内容' }
                     ]
@@ -109,14 +113,14 @@ const problemRoutes: RouteRecordRaw[] = [
             },
             {
                 path: 'configurations',
-                name: 'adminProblemsCreateConfigurations',
+                name: 'problemsCreateConfigurations',
                 component: () => import('@/views/admin/problem-editor/ProblemEditorConfigurations.vue'),
                 alias: ['datasets'],
                 meta: {
                     requiresAuth: true,
                     breadcrumb: [
                         { label: '题库管理' },
-                        { label: '题目列表', to: '/admin/problems' },
+                        { label: '题目列表', to: '/problems' },
                         { label: '新建题目' },
                         { label: '判题配置' }
                     ]
@@ -125,8 +129,8 @@ const problemRoutes: RouteRecordRaw[] = [
         ]
     },
     {
-        path: '/admin/categories',
-        name: 'adminCategories',
+        path: '/problems/categories',
+        name: 'categories',
         component: () => import('@/views/admin/CategoryList.vue'),
         meta: {
             requiresAuth: true,
@@ -134,8 +138,8 @@ const problemRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/difficulties',
-        name: 'adminDifficulties',
+        path: '/problems/difficulties',
+        name: 'difficulties',
         component: () => import('@/views/admin/DifficultyList.vue'),
         meta: {
             requiresAuth: true,
@@ -143,8 +147,8 @@ const problemRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/languages',
-        name: 'adminLanguages',
+        path: '/problems/languages',
+        name: 'languages',
         component: () => import('@/views/admin/LanguageList.vue'),
         meta: {
             requiresAuth: true,
@@ -152,8 +156,8 @@ const problemRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/tags',
-        name: 'adminTags',
+        path: '/problems/tags',
+        name: 'tags',
         component: () => import('@/views/admin/TagList.vue'),
         meta: {
             requiresAuth: true,
@@ -162,10 +166,11 @@ const problemRoutes: RouteRecordRaw[] = [
     }
 ];
 
+// ==================== 竞赛管理路由 ====================
 const contestRoutes: RouteRecordRaw[] = [
     {
-        path: '/admin/contests',
-        name: 'adminContests',
+        path: '/contests',
+        name: 'contests',
         component: () => import('@/views/contests/ContestList.vue'),
         meta: {
             requiresAuth: true,
@@ -173,25 +178,26 @@ const contestRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/contests/:contestId',
-        name: 'adminContestDetail',
+        path: '/contests/:contestId',
+        name: 'contestDetail',
         component: () => import('@/views/contests/ContestDetail.vue'),
         props: true,
         meta: {
             requiresAuth: true,
             breadcrumb: [
                 { label: '竞赛管理' },
-                { label: '比赛列表', to: '/admin/contests' },
+                { label: '比赛列表', to: '/contests' },
                 { label: '比赛详情' }
             ]
         }
     }
 ];
 
+// ==================== 社区互动路由 ====================
 const interactionRoutes: RouteRecordRaw[] = [
     {
-        path: '/admin/interaction/comments',
-        name: 'interactionComments',
+        path: '/interaction/comments',
+        name: 'comments',
         component: () => import('@/views/interaction/CommentList.vue'),
         meta: {
             requiresAuth: true,
@@ -199,8 +205,8 @@ const interactionRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/interaction/moderation',
-        name: 'interactionModeration',
+        path: '/interaction/moderation',
+        name: 'moderation',
         component: () => import('@/views/interaction/ModerationTaskList.vue'),
         meta: {
             requiresAuth: true,
@@ -208,8 +214,8 @@ const interactionRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/interaction/sensitive-words',
-        name: 'interactionSensitiveWords',
+        path: '/interaction/sensitive-words',
+        name: 'sensitiveWords',
         component: () => import('@/views/interaction/SensitiveWordList.vue'),
         meta: {
             requiresAuth: true,
@@ -217,8 +223,8 @@ const interactionRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/interaction/reactions',
-        name: 'interactionReactions',
+        path: '/interaction/reactions',
+        name: 'reactions',
         component: () => import('@/views/interaction/ReactionList.vue'),
         meta: {
             requiresAuth: true,
@@ -226,8 +232,8 @@ const interactionRoutes: RouteRecordRaw[] = [
         }
     },
     {
-        path: '/admin/interaction/bookmarks',
-        name: 'interactionBookmarks',
+        path: '/interaction/bookmarks',
+        name: 'bookmarks',
         component: () => import('@/views/interaction/BookmarkList.vue'),
         meta: {
             requiresAuth: true,
@@ -236,6 +242,54 @@ const interactionRoutes: RouteRecordRaw[] = [
     }
 ];
 
+// ==================== 认证相关路由 ====================
+const authRoutes: RouteRecordRaw[] = [
+    {
+        path: '/auth/login',
+        name: 'login',
+        component: () => import('@/views/pages/auth/Login.vue'),
+        meta: {
+            guestOnly: true,
+            breadcrumb: [{ label: '登录' }]
+        }
+    },
+    {
+        path: '/auth/register',
+        name: 'register',
+        component: () => import('@/views/pages/auth/Register.vue'),
+        meta: {
+            guestOnly: true,
+            breadcrumb: [{ label: '注册' }]
+        }
+    },
+    {
+        path: '/auth/forgot-password',
+        name: 'forgotPassword',
+        component: () => import('@/views/pages/auth/ForgotPassword.vue'),
+        meta: {
+            guestOnly: true,
+            breadcrumb: [{ label: '忘记密码' }]
+        }
+    },
+    {
+        path: '/auth/error',
+        name: 'error',
+        component: () => import('@/views/pages/auth/Error.vue'),
+        meta: {
+            breadcrumb: [{ label: '错误' }]
+        }
+    },
+    {
+        path: '/auth/access',
+        name: 'accessDenied',
+        component: () => import('@/views/pages/auth/Access.vue'),
+        meta: {
+            breadcrumb: [{ label: '访问被拒绝' }]
+        }
+    }
+];
+
+// ==================== 主应用路由结构 ====================
 const adminChildren: RouteRecordRaw[] = [
     dashboardRoute,
     ...accountRoutes,
@@ -251,6 +305,13 @@ const routes: RouteRecordRaw[] = [
         component: AppLayout,
         meta: { requiresAuth: true },
         children: adminChildren
+    },
+    ...authRoutes,
+    // 404 路由
+    {
+        path: '/:pathMatch(.*)*',
+        name: 'notFound',
+        redirect: '/auth/error'
     }
 ];
 
@@ -259,8 +320,11 @@ const router = createRouter({
     routes
 });
 
+// ==================== 路由守卫 ====================
 router.beforeEach(async (to, _from, next) => {
     const authStore = useAuthStore();
+
+    // 需要认证的路由
     if (to.meta.requiresAuth) {
         if (!authStore.isAuthenticated) {
             try {
@@ -273,6 +337,12 @@ router.beforeEach(async (to, _from, next) => {
             return next({ name: 'login', query: { redirect: to.fullPath } });
         }
     }
+
+    // 仅访客可访问的路由（已登录用户访问会重定向到首页）
+    if (to.meta.guestOnly && authStore.isAuthenticated) {
+        return next({ name: 'dashboard' });
+    }
+
     next();
 });
 

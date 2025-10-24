@@ -5,166 +5,46 @@ import AppMenuItem from './AppMenuItem.vue';
 
 const model = ref([
     {
-        label: 'UI Components',
-        items: [
-            { label: 'Form Layout', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },
-            { label: 'Input', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
-            { label: 'Button', icon: 'pi pi-fw pi-mobile', to: '/uikit/button', class: 'rotated-icon' },
-            { label: 'Table', icon: 'pi pi-fw pi-table', to: '/uikit/table' },
-            { label: 'List', icon: 'pi pi-fw pi-list', to: '/uikit/list' },
-            { label: 'Tree', icon: 'pi pi-fw pi-share-alt', to: '/uikit/tree' },
-            { label: 'Panel', icon: 'pi pi-fw pi-tablet', to: '/uikit/panel' },
-            { label: 'Overlay', icon: 'pi pi-fw pi-clone', to: '/uikit/overlay' },
-            { label: 'Media', icon: 'pi pi-fw pi-image', to: '/uikit/media' },
-            { label: 'Menu', icon: 'pi pi-fw pi-bars', to: '/uikit/menu' },
-            { label: 'Message', icon: 'pi pi-fw pi-comment', to: '/uikit/message' },
-            { label: 'File', icon: 'pi pi-fw pi-file', to: '/uikit/file' },
-            { label: 'Chart', icon: 'pi pi-fw pi-chart-bar', to: '/uikit/charts' },
-            { label: 'Timeline', icon: 'pi pi-fw pi-calendar', to: '/uikit/timeline' },
-            { label: 'Misc', icon: 'pi pi-fw pi-circle', to: '/uikit/misc' }
-        ]
-    },
-    {
-        label: 'Pages',
-        icon: 'pi pi-fw pi-briefcase',
-        to: '/pages',
-        items: [
-            {
-                label: 'Landing',
-                icon: 'pi pi-fw pi-globe',
-                to: '/landing'
-            },
-            {
-                label: 'Auth',
-                icon: 'pi pi-fw pi-user',
-                items: [
-                    {
-                        label: 'Login',
-                        icon: 'pi pi-fw pi-sign-in',
-                        to: '/auth/login'
-                    },
-                    {
-                        label: 'Error',
-                        icon: 'pi pi-fw pi-times-circle',
-                        to: '/auth/error'
-                    },
-                    {
-                        label: 'Access Denied',
-                        icon: 'pi pi-fw pi-lock',
-                        to: '/auth/access'
-                    }
-                ]
-            },
-            {
-                label: 'Crud',
-                icon: 'pi pi-fw pi-pencil',
-                to: '/pages/crud'
-            },
-            {
-                label: 'Not Found',
-                icon: 'pi pi-fw pi-exclamation-circle',
-                to: '/pages/notfound'
-            },
-            {
-                label: 'Empty',
-                icon: 'pi pi-fw pi-circle-off',
-                to: '/pages/empty'
-            }
-        ]
-    },
-    {
-        label: 'Hierarchy',
-        items: [
-            {
-                label: 'Submenu 1',
-                icon: 'pi pi-fw pi-bookmark',
-                items: [
-                    {
-                        label: 'Submenu 1.1',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [
-                            { label: 'Submenu 1.1.1', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'Submenu 1.1.2', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'Submenu 1.1.3', icon: 'pi pi-fw pi-bookmark' }
-                        ]
-                    },
-                    {
-                        label: 'Submenu 1.2',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [{ label: 'Submenu 1.2.1', icon: 'pi pi-fw pi-bookmark' }]
-                    }
-                ]
-            },
-            {
-                label: 'Submenu 2',
-                icon: 'pi pi-fw pi-bookmark',
-                items: [
-                    {
-                        label: 'Submenu 2.1',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [
-                            { label: 'Submenu 2.1.1', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'Submenu 2.1.2', icon: 'pi pi-fw pi-bookmark' }
-                        ]
-                    },
-                    {
-                        label: 'Submenu 2.2',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [{ label: 'Submenu 2.2.1', icon: 'pi pi-fw pi-bookmark' }]
-                    }
-                ]
-            }
-        ]
-    },
-    {
-        label: 'Get Started',
-        items: [
-            {
-                label: 'Documentation',
-                icon: 'pi pi-fw pi-book',
-                to: '/documentation'
-            },
-            {
-                label: 'View Source',
-                icon: 'pi pi-fw pi-github',
-                url: 'https://github.com/primefaces/sakai-vue',
-                target: '_blank'
-            }
-        ]
-    },
-    {
         label: '总览',
         items: [{ label: '仪表盘', icon: 'pi pi-fw pi-home', to: '/' }]
     },
     {
         label: '权限管理',
         items: [
-            { label: '用户管理', icon: 'pi pi-fw pi-users', to: '/admin/users' },
-            { label: '角色管理', icon: 'pi pi-fw pi-shield', to: '/admin/roles' }
+            { label: '用户管理', icon: 'pi pi-fw pi-users', to: '/account/users' },
+            { label: '角色管理', icon: 'pi pi-fw pi-shield', to: '/account/roles' }
+        ]
+    },
+    {
+        label: '安全中心',
+        items: [
+            { label: '权限列表', icon: 'pi pi-fw pi-key', to: '/security/permissions' },
+            { label: '认证令牌', icon: 'pi pi-fw pi-id-card', to: '/security/tokens' },
+            { label: '审计日志', icon: 'pi pi-fw pi-history', to: '/security/audit-logs' }
         ]
     },
     {
         label: '题库管理',
         items: [
-            { label: '题目管理', icon: 'pi pi-fw pi-book', to: '/admin/problems' },
-            { label: '分类管理', icon: 'pi pi-fw pi-sitemap', to: '/admin/categories' },
-            { label: '难度管理', icon: 'pi pi-fw pi-sliders-h', to: '/admin/difficulties' },
-            { label: '语言管理', icon: 'pi pi-fw pi-code', to: '/admin/languages' },
-            { label: '标签管理', icon: 'pi pi-fw pi-tags', to: '/admin/tags' }
+            { label: '题目管理', icon: 'pi pi-fw pi-book', to: '/problems' },
+            { label: '分类管理', icon: 'pi pi-fw pi-sitemap', to: '/problems/categories' },
+            { label: '难度管理', icon: 'pi pi-fw pi-sliders-h', to: '/problems/difficulties' },
+            { label: '语言管理', icon: 'pi pi-fw pi-code', to: '/problems/languages' },
+            { label: '标签管理', icon: 'pi pi-fw pi-tags', to: '/problems/tags' }
         ]
     },
     {
         label: '竞赛管理',
-        items: [{ label: '比赛列表', icon: 'pi pi-fw pi-flag', to: '/admin/contests' }]
+        items: [{ label: '比赛列表', icon: 'pi pi-fw pi-flag', to: '/contests' }]
     },
     {
         label: '社区互动',
         items: [
-            { label: '评论管理', icon: 'pi pi-fw pi-comments', to: '/admin/interaction/comments' },
-            { label: '内容审核', icon: 'pi pi-fw pi-shield', to: '/admin/interaction/moderation' },
-            { label: '敏感词库', icon: 'pi pi-fw pi-exclamation-triangle', to: '/admin/interaction/sensitive-words' },
-            { label: '互动反馈', icon: 'pi pi-fw pi-thumbs-up', to: '/admin/interaction/reactions' },
-            { label: '用户收藏', icon: 'pi pi-fw pi-bookmark', to: '/admin/interaction/bookmarks' }
+            { label: '评论管理', icon: 'pi pi-fw pi-comments', to: '/interaction/comments' },
+            { label: '内容审核', icon: 'pi pi-fw pi-eye', to: '/interaction/moderation' },
+            { label: '敏感词库', icon: 'pi pi-fw pi-exclamation-triangle', to: '/interaction/sensitive-words' },
+            { label: '互动反馈', icon: 'pi pi-fw pi-thumbs-up', to: '/interaction/reactions' },
+            { label: '用户收藏', icon: 'pi pi-fw pi-bookmark', to: '/interaction/bookmarks' }
         ]
     }
 ]);

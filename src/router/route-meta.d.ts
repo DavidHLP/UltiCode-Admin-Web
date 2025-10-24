@@ -11,5 +11,9 @@ export interface BreadcrumbConfig {
 declare module 'vue-router' {
     interface RouteMeta {
         breadcrumb?: BreadcrumbConfig[];
+        /** 路由需要认证才能访问 */
+        requiresAuth?: boolean;
+        /** 路由仅允许访客访问（未登录用户） */
+        guestOnly?: boolean;
     }
 }
