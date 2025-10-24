@@ -391,7 +391,7 @@ function copyCommentId(comment: CommentSummary) {
                         <template #body="slotProps">
                             <SplitButton label="审核" icon="pi pi-check" severity="info" size="small" :model="[
                                 {
-                                    label: '编辑',
+                                    label: '编辑内容',
                                     icon: 'pi pi-pencil',
                                     command: () => openEditDialog(slotProps.data)
                                 },

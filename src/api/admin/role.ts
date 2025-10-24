@@ -86,3 +86,12 @@ export function fetchRoleOptions(signal?: AbortSignal) {
         signal
     });
 }
+
+export function fetchRolePermissionOptions(params?: RoleQuery, signal?: AbortSignal) {
+    return requestData<PermissionDto[]>({
+        url: '/api/admin/roles/permissions',
+        method: 'get',
+        params,
+        signal
+    });
+}

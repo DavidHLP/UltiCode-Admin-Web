@@ -4,6 +4,7 @@ export interface PermissionView {
     id: number;
     code: string;
     name: string;
+    createdAt?: string | null;
 }
 
 export interface PermissionQuery {
@@ -11,6 +12,11 @@ export interface PermissionQuery {
 }
 
 export interface PermissionCreatePayload {
+    code: string;
+    name: string;
+}
+
+export interface PermissionUpdatePayload {
     code: string;
     name: string;
 }
@@ -28,6 +34,19 @@ export function createPermission(payload: PermissionCreatePayload, sensitiveToke
     return requestData<PermissionView>({
         url: '/api/admin/permissions',
         method: 'post',
+        data: payload,
+        sensitiveToken
+    });
+}
+
+export function updatePermission(
+    permissionId: number,
+    payload: PermissionUpdatePayload,
+    sensitiveToken: string
+) {
+    return requestData<PermissionView>({
+        url: `/api/admin/permissions/${permissionId}`,
+        method: 'put',
         data: payload,
         sensitiveToken
     });

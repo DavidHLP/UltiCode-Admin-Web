@@ -3,7 +3,9 @@ import {
     createPermission,
     deletePermission,
     fetchPermissions,
+    updatePermission,
     type PermissionCreatePayload,
+    type PermissionUpdatePayload,
     type PermissionView
 } from '@/api/admin/permissions';
 import { useSensitiveDialog } from '@/composables/useSensitiveDialog';
@@ -17,6 +19,7 @@ const keyword = ref('');
 const loading = ref(false);
 const dialogVisible = ref(false);
 const saving = ref(false);
+const editingId = ref<number | null>(null);
 const form = ref<PermissionCreatePayload>({ code: '', name: '' });
 
 const toast = useToast();
@@ -53,7 +56,14 @@ async function loadPermissions() {
 }
 
 function openCreate() {
+    editingId.value = null;
     form.value = { code: '', name: '' };
+    dialogVisible.value = true;
+}
+
+function openEdit(item: PermissionView) {
+    editingId.value = item.id;
+    form.value = { code: item.code, name: item.name };
     dialogVisible.value = true;
 }
 
@@ -78,15 +88,22 @@ async function submitForm() {
     }
     saving.value = true;
     try {
-        await createPermission({ code, name }, sensitiveToken);
-        toast.add({ severity: 'success', summary: '创建成功', detail: '权限已创建', life: 3000 });
+        if (editingId.value === null) {
+            const payload: PermissionCreatePayload = { code, name };
+            await createPermission(payload, sensitiveToken);
+            toast.add({ severity: 'success', summary: '创建成功', detail: '权限已创建', life: 3000 });
+        } else {
+            const payload: PermissionUpdatePayload = { code, name };
+            await updatePermission(editingId.value, payload, sensitiveToken);
+            toast.add({ severity: 'success', summary: '更新成功', detail: '权限已更新', life: 3000 });
+        }
         dialogVisible.value = false;
         await loadPermissions();
     } catch (error) {
         toast.add({
             severity: 'error',
             summary: '操作失败',
-            detail: (error as Error)?.message ?? '创建权限失败',
+            detail: (error as Error)?.message ?? '保存权限失败',
             life: 4000
         });
     } finally {
@@ -129,6 +146,23 @@ function clearFilters() {
     loadPermissions();
 }
 
+function formatDate(value?: string | null) {
+    if (!value) {
+        return '-';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+    return new Intl.DateTimeFormat('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).format(date);
+}
+
 </script>
 
 <template>
@@ -150,9 +184,18 @@ function clearFilters() {
                 <DataTable :value="permissions" dataKey="id" :loading="loading" responsiveLayout="scroll">
                     <Column field="code" header="权限编码" style="min-width: 12rem" />
                     <Column field="name" header="权限名称" style="min-width: 12rem" />
+                    <Column field="createdAt" header="创建时间" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            {{ formatDate(data.createdAt) }}
+                        </template>
+                    </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <Button label="删除" icon="pi pi-trash" severity="danger" text @click="removePermission(data)" />
+                            <div class="flex gap-2">
+                                <Button label="编辑" icon="pi pi-pencil" text @click="openEdit(data)" />
+                                <Button label="删除" icon="pi pi-trash" severity="danger" text
+                                    @click="removePermission(data)" />
+                            </div>
                         </template>
                     </Column>
                     <template #empty>
@@ -163,7 +206,7 @@ function clearFilters() {
         </div>
     </div>
 
-    <Dialog v-model:visible="dialogVisible" modal header="新建权限"
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建权限' : '编辑权限'"
         :style="{ width: '24rem' }" @hide="closeDialog">
         <form class="flex flex-col gap-4" @submit.prevent="submitForm">
             <div class="field">

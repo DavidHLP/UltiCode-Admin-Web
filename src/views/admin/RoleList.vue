@@ -3,7 +3,9 @@ import {
     createRole,
     deleteRole,
     fetchRoleList,
+    fetchRolePermissionOptions,
     updateRole,
+    type PermissionDto,
     type RoleCreatePayload,
     type RoleUpdatePayload,
     type RoleView
@@ -12,17 +14,19 @@ import { useAuthStore } from '@/stores/auth';
 import { useSensitiveDialog } from '@/composables/useSensitiveDialog';
 import InputOtp from 'primevue/inputotp';
 import { useToast } from 'primevue/usetoast';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 interface RoleForm {
     code: string;
     name: string;
     remark: string;
+    permissionIds: number[];
 }
 
 const roles = ref<RoleView[]>([]);
 const keyword = ref('');
 const loading = ref(false);
+const permissionLoading = ref(false);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const editingId = ref<number | null>(null);
@@ -41,10 +45,20 @@ const {
 const form = ref<RoleForm>({
     code: '',
     name: '',
-    remark: ''
+    remark: '',
+    permissionIds: []
 });
 
+const allPermissions = ref<PermissionDto[]>([]);
+const permissionOptions = computed(() =>
+    allPermissions.value.map((permission) => ({
+        ...permission,
+        label: permission.name ? `${permission.name}（${permission.code}）` : permission.code
+    }))
+);
+
 onMounted(() => {
+    loadPermissionOptions();
     loadRoles();
 });
 
@@ -65,6 +79,22 @@ async function loadRoles() {
     }
 }
 
+async function loadPermissionOptions() {
+    permissionLoading.value = true;
+    try {
+        allPermissions.value = await fetchRolePermissionOptions();
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: '加载失败',
+            detail: (error as Error)?.message ?? '加载权限列表失败',
+            life: 4000
+        });
+    } finally {
+        permissionLoading.value = false;
+    }
+}
+
 function onSearch() {
     loadRoles();
 }
@@ -79,7 +109,8 @@ function openCreate() {
     form.value = {
         code: '',
         name: '',
-        remark: ''
+        remark: '',
+        permissionIds: []
     };
     dialogVisible.value = true;
 }
@@ -89,7 +120,8 @@ function openEdit(role: RoleView) {
     form.value = {
         code: role.code,
         name: role.name,
-        remark: role.remark ?? ''
+        remark: role.remark ?? '',
+        permissionIds: role.permissions?.map((permission) => permission.id) ?? []
     };
     dialogVisible.value = true;
 }
@@ -111,6 +143,10 @@ async function submitForm() {
     }
     const remarkRaw = form.value.remark?.trim();
     const remark = remarkRaw === undefined || remarkRaw === '' ? null : remarkRaw;
+    const permissionIds =
+            form.value.permissionIds && form.value.permissionIds.length > 0
+                ? Array.from(new Set(form.value.permissionIds))
+                : [];
 
     const sensitiveToken = await acquireSensitiveToken();
     if (!sensitiveToken) {
@@ -119,11 +155,11 @@ async function submitForm() {
     saving.value = true;
     try {
         if (editingId.value === null) {
-            const payload: RoleCreatePayload = { code, name, remark };
+            const payload: RoleCreatePayload = { code, name, remark, permissionIds };
             await createRole(payload, sensitiveToken);
             toast.add({ severity: 'success', summary: '创建成功', detail: '角色已创建', life: 3000 });
         } else {
-            const payload: RoleUpdatePayload = { code, name, remark };
+            const payload: RoleUpdatePayload = { code, name, remark, permissionIds };
             await updateRole(editingId.value, payload, sensitiveToken);
             toast.add({ severity: 'success', summary: '更新成功', detail: '角色信息已更新', life: 3000 });
         }
@@ -213,6 +249,15 @@ async function acquireSensitiveToken(): Promise<string | null> {
                             {{ data.remark || '-' }}
                         </template>
                     </Column>
+                    <Column header="拥有权限" style="min-width: 18rem">
+                        <template #body="{ data }">
+                            <div v-if="data.permissions?.length" class="flex flex-wrap gap-2">
+                                <Tag v-for="permission in data.permissions" :key="permission.id" severity="info"
+                                    :value="permission.code" :title="permission.name" />
+                            </div>
+                            <span v-else>-</span>
+                        </template>
+                    </Column>
                     <Column field="createdAt" header="创建时间" style="min-width: 12rem">
                         <template #body="{ data }">
                             {{ formatDate(data.createdAt) }}
@@ -254,6 +299,14 @@ async function acquireSensitiveToken(): Promise<string | null> {
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="remark">备注</label>
                 <Textarea id="remark" v-model="form.remark" autoResize :rows="3" placeholder="填写角色说明" class="w-full" />
+            </div>
+            <div class="field">
+                <label class="font-medium text-sm mb-1 block" for="permissions">关联权限</label>
+                <MultiSelect id="permissions" v-model="form.permissionIds" :options="permissionOptions"
+                    optionLabel="label" optionValue="id" display="chip" placeholder="选择可访问的权限" filter
+                    :filterFields="['code', 'name']" :loading="permissionLoading"
+                    :disabled="permissionLoading && !permissionOptions.length" class="w-full" />
+                <small class="text-xs text-color-secondary">可多选，支持按编码或名称过滤。</small>
             </div>
             <div class="flex justify-end gap-2 mt-3">
                 <Button type="button" label="取消" severity="secondary" @click="closeDialog" />
