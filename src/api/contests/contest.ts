@@ -15,6 +15,13 @@ export interface ContestSummary {
     participantCount?: number | null;
     lastSubmissionAt?: string | null;
     updatedAt?: string | null;
+    registrationMode?: string | null;
+    registrationStartTime?: string | null;
+    registrationEndTime?: string | null;
+    maxParticipants?: number | null;
+    penaltyPerWrong?: number | null;
+    scoreboardFreezeMinutes?: number | null;
+    hideScoreDuringFreeze?: boolean | null;
 }
 
 export interface ContestProblem {
@@ -43,6 +50,7 @@ export interface ContestDetail extends ContestSummary {
     descriptionMd?: string | null;
     createdBy?: number | null;
     createdAt?: string | null;
+    pendingRegistrationCount?: number | null;
     problems: ContestProblem[];
     participants: ContestParticipant[];
 }
@@ -65,6 +73,13 @@ export interface ContestUpsertPayload {
     startTime: string;
     endTime: string;
     visible?: boolean;
+    registrationMode?: string;
+    registrationStartTime?: string | null;
+    registrationEndTime?: string | null;
+    maxParticipants?: number | null;
+    penaltyPerWrong?: number | null;
+    scoreboardFreezeMinutes?: number | null;
+    hideScoreDuringFreeze?: boolean;
 }
 
 export interface ContestProblemInput {
@@ -82,6 +97,55 @@ export interface ContestParticipantsPayload {
     userIds: number[];
 }
 
+export type ContestRegistrationStatusCode = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface ContestRegistration {
+    id: number;
+    contestId: number;
+    userId: number;
+    username?: string | null;
+    displayName?: string | null;
+    status: ContestRegistrationStatusCode;
+    source?: string | null;
+    note?: string | null;
+    reviewedBy?: number | null;
+    reviewerName?: string | null;
+    reviewedAt?: string | null;
+    createdAt?: string | null;
+}
+
+export interface ContestRegistrationQuery {
+    page?: number;
+    size?: number;
+    status?: ContestRegistrationStatusCode;
+}
+
+export interface ContestRegistrationCreatePayload {
+    userId: number;
+    source?: 'self' | 'invite' | 'admin';
+    note?: string | null;
+}
+
+export interface ContestRegistrationDecisionPayload {
+    registrationIds: number[];
+    targetStatus?: ContestRegistrationStatusCode;
+    note?: string | null;
+}
+
+export interface ProblemSummaryOption {
+    id: number;
+    slug?: string | null;
+    title?: string | null;
+    difficulty?: string | null;
+}
+
+export interface UserSummaryOption {
+    id: number;
+    username: string;
+    displayName?: string | null;
+    email?: string | null;
+}
+
 export interface ContestKindOption {
     code: string;
     displayName: string;
@@ -90,6 +154,7 @@ export interface ContestKindOption {
 export interface ContestOptions {
     kinds: ContestKindOption[];
     statuses: ContestStatus[];
+    registrationModes: string[];
 }
 
 export interface ContestScoreboardProblem {
@@ -115,6 +180,10 @@ export interface ContestScoreboardRecord {
     firstAcceptedAt?: string | null;
     lastSubmissionAt?: string | null;
     globalBestScore?: number | null;
+    pendingAttempts?: number | null;
+    pendingBestScore?: number | null;
+    pendingLastVerdict?: string | null;
+    pendingLastSubmissionAt?: string | null;
 }
 
 export interface ContestScoreboardParticipant {
@@ -127,6 +196,7 @@ export interface ContestScoreboardParticipant {
     penalty?: number | null;
     lastAcceptedAt?: string | null;
     lastSubmissionAt?: string | null;
+    pendingCount?: number | null;
     records: ContestScoreboardRecord[];
 }
 
@@ -134,6 +204,12 @@ export interface ContestScoreboard {
     contestId: number;
     kind: string;
     generatedAt: string;
+    penaltyPerWrong: number;
+    freezeActive: boolean;
+    freezeHideScore: boolean;
+    freezeStartTime?: string | null;
+    freezeMinutes?: number | null;
+    pendingSubmissionCount?: number | null;
     problems: ContestScoreboardProblem[];
     participants: ContestScoreboardParticipant[];
 }
@@ -153,6 +229,7 @@ export interface ContestSubmission {
 
 export type ContestListResponse = PageResult<ContestSummary>;
 export type ContestSubmissionListResponse = PageResult<ContestSubmission>;
+export type ContestRegistrationListResponse = PageResult<ContestRegistration>;
 
 export function fetchContests(params: ContestQuery) {
     return requestData<ContestListResponse>({
@@ -249,5 +326,51 @@ export function fetchContestSubmissions(contestId: number, params: ContestSubmis
         url: `/api/admin/contests/${contestId}/submissions`,
         method: 'get',
         params
+    });
+}
+
+export function fetchContestRegistrations(contestId: number, params: ContestRegistrationQuery) {
+    return requestData<ContestRegistrationListResponse>({
+        url: `/api/admin/contests/${contestId}/registrations`,
+        method: 'get',
+        params
+    });
+}
+
+export function createContestRegistration(
+    contestId: number,
+    payload: ContestRegistrationCreatePayload
+) {
+    return requestData<ContestRegistration>({
+        url: `/api/admin/contests/${contestId}/registrations`,
+        method: 'post',
+        data: payload
+    });
+}
+
+export function decideContestRegistrations(
+    contestId: number,
+    payload: ContestRegistrationDecisionPayload
+) {
+    return requestData<ContestRegistration[]>({
+        url: `/api/admin/contests/${contestId}/registrations/decision`,
+        method: 'post',
+        data: payload
+    });
+}
+
+export function searchContestProblems(keyword: string, limit = 10) {
+    return requestData<ProblemSummaryOption[]>({
+        url: '/api/admin/contests/problem-search',
+        method: 'get',
+        params: { keyword, limit }
+    });
+}
+
+export function searchContestUsers(keyword: string, limit = 10) {
+    return requestData<UserSummaryOption[]>({
+        url: '/api/admin/contests/user-search',
+        method: 'get',
+        params: { keyword, limit }
     });
 }

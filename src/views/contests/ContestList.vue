@@ -41,11 +41,24 @@ const formModel = reactive({
     kind: '',
     visible: true,
     startTime: null as Date | null,
-    endTime: null as Date | null
+    endTime: null as Date | null,
+    registrationMode: 'open',
+    registrationStartTime: null as Date | null,
+    registrationEndTime: null as Date | null,
+    maxParticipants: null as number | null,
+    penaltyPerWrong: 20,
+    scoreboardFreezeMinutes: 0,
+    hideScoreDuringFreeze: true
 });
 
 const kindOptions = computed(() => options.value?.kinds ?? []);
 const statusOptions = computed(() => options.value?.statuses ?? []);
+const registrationModeOptions = computed(() =>
+    (options.value?.registrationModes ?? []).map((mode) => ({
+        label: registrationModeLabel(mode),
+        value: mode
+    }))
+);
 
 const visibilityOptions = [
     { label: '公开', value: 'public' as const },
@@ -69,6 +82,13 @@ function resetForm() {
     formModel.visible = true;
     formModel.startTime = null;
     formModel.endTime = null;
+    formModel.registrationMode = registrationModeOptions.value[0]?.value ?? 'open';
+    formModel.registrationStartTime = null;
+    formModel.registrationEndTime = null;
+    formModel.maxParticipants = null;
+    formModel.penaltyPerWrong = 20;
+    formModel.scoreboardFreezeMinutes = 0;
+    formModel.hideScoreDuringFreeze = true;
 }
 
 async function loadOptions() {
@@ -77,6 +97,9 @@ async function loadOptions() {
         options.value = data;
         if (!formModel.kind && data.kinds?.length) {
             formModel.kind = data.kinds[0]?.code ?? 'icpc';
+        }
+        if (!formModel.registrationMode && data.registrationModes?.length) {
+            formModel.registrationMode = data.registrationModes[0] ?? 'open';
         }
     } catch (error) {
         toast.add({
@@ -139,6 +162,17 @@ function openEditDialog(contest: ContestSummary) {
     formModel.visible = !!contest.visible;
     formModel.startTime = contest.startTime ? new Date(contest.startTime) : null;
     formModel.endTime = contest.endTime ? new Date(contest.endTime) : null;
+    formModel.registrationMode = contest.registrationMode ?? 'open';
+    formModel.registrationStartTime = contest.registrationStartTime
+        ? new Date(contest.registrationStartTime)
+        : null;
+    formModel.registrationEndTime = contest.registrationEndTime
+        ? new Date(contest.registrationEndTime)
+        : null;
+    formModel.maxParticipants = contest.maxParticipants ?? null;
+    formModel.penaltyPerWrong = contest.penaltyPerWrong ?? 20;
+    formModel.scoreboardFreezeMinutes = contest.scoreboardFreezeMinutes ?? 0;
+    formModel.hideScoreDuringFreeze = contest.hideScoreDuringFreeze ?? true;
     createDialogVisible.value = true;
 }
 
@@ -168,19 +202,57 @@ function buildPayload(): ContestUpsertPayload | null {
         });
         return null;
     }
+    if (
+        formModel.registrationStartTime &&
+        formModel.registrationEndTime &&
+        formModel.registrationEndTime < formModel.registrationStartTime
+    ) {
+        toast.add({
+            severity: 'warn',
+            summary: '提示',
+            detail: '报名结束时间必须晚于报名开始时间',
+            life: 3000
+        });
+        return null;
+    }
     const payload: ContestUpsertPayload = {
         title: formModel.title.trim(),
         descriptionMd: formModel.descriptionMd?.trim() || undefined,
         kind: formModel.kind,
         startTime: formModel.startTime.toISOString(),
         endTime: formModel.endTime.toISOString(),
-        visible: formModel.visible
+        visible: formModel.visible,
+        registrationMode: formModel.registrationMode,
+        registrationStartTime: formModel.registrationStartTime
+            ? formModel.registrationStartTime.toISOString()
+            : null,
+        registrationEndTime: formModel.registrationEndTime
+            ? formModel.registrationEndTime.toISOString()
+            : null,
+        maxParticipants:
+            formModel.maxParticipants == null ? null : Number(formModel.maxParticipants),
+        penaltyPerWrong:
+            formModel.penaltyPerWrong == null ? null : Math.max(0, Number(formModel.penaltyPerWrong)),
+        scoreboardFreezeMinutes:
+            formModel.scoreboardFreezeMinutes == null
+                ? null
+                : Math.max(0, Number(formModel.scoreboardFreezeMinutes)),
+        hideScoreDuringFreeze: formModel.hideScoreDuringFreeze
     };
     if (!payload.title) {
         toast.add({
             severity: 'warn',
             summary: '提示',
             detail: '比赛标题不能为空',
+            life: 3000
+        });
+        return null;
+    }
+    if (payload.maxParticipants !== null && payload.maxParticipants <= 0) {
+        toast.add({
+            severity: 'warn',
+            summary: '提示',
+            detail: '参赛人数上限必须为正整数',
             life: 3000
         });
         return null;
@@ -277,6 +349,19 @@ function statusLabel(status: string) {
     }
 }
 
+function registrationModeLabel(mode: string) {
+    switch (mode) {
+        case 'open':
+            return '开放报名';
+        case 'approval':
+            return '审核报名';
+        case 'invite_only':
+            return '邀请制';
+        default:
+            return mode;
+    }
+}
+
 function kindLabel(kind: string) {
     const match = kindOptions.value.find((item: ContestKindOption) => item.code === kind);
     return match?.displayName ?? kind;
@@ -366,6 +451,11 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
                             {{ kindLabel(data.kind) }}
                         </template>
                     </Column>
+                    <Column field="registrationMode" header="报名" style="min-width: 8rem">
+                        <template #body="{ data }">
+                            {{ registrationModeLabel(data.registrationMode ?? 'open') }}
+                        </template>
+                    </Column>
                     <Column field="status" header="状态" style="min-width: 8rem">
                         <template #body="{ data }">
                             <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
@@ -443,6 +533,58 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
                     <label for="contest-end">结束时间</label>
                     <Calendar id="contest-end" v-model="formModel.endTime" showIcon hourFormat="24" showTime
                         placeholder="选择结束时间" />
+                </div>
+            </div>
+
+            <!-- 报名配置 -->
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex flex-col gap-2 w-full">
+                    <label for="contest-registration-mode">报名模式</label>
+                    <Dropdown id="contest-registration-mode" v-model="formModel.registrationMode"
+                        :options="registrationModeOptions" optionLabel="label" optionValue="value"
+                        placeholder="选择报名模式" />
+                </div>
+                <div class="flex flex-col gap-2 w-full">
+                    <label for="contest-max-participants">人数上限 (可选)</label>
+                    <InputNumber id="contest-max-participants" v-model="formModel.maxParticipants"
+                        :useGrouping="false" :min="1" placeholder="不限请留空" />
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex flex-col gap-2 w-full">
+                    <label for="contest-registration-start">报名开始时间 (可选)</label>
+                    <Calendar id="contest-registration-start" v-model="formModel.registrationStartTime" showIcon
+                        hourFormat="24" showTime placeholder="选择报名开始时间" />
+                </div>
+                <div class="flex flex-col gap-2 w-full">
+                    <label for="contest-registration-end">报名结束时间 (可选)</label>
+                    <Calendar id="contest-registration-end" v-model="formModel.registrationEndTime" showIcon
+                        hourFormat="24" showTime placeholder="选择报名结束时间" />
+                </div>
+            </div>
+
+            <!-- 榜单配置 -->
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex flex-col gap-2 w-full">
+                    <label for="contest-penalty">罚时 (分钟)</label>
+                    <InputNumber id="contest-penalty" v-model="formModel.penaltyPerWrong" :useGrouping="false"
+                        :min="0" placeholder="默认 20" />
+                </div>
+                <div class="flex flex-col gap-2 w-full">
+                    <label for="contest-freeze">封榜提前 (分钟)</label>
+                    <InputNumber id="contest-freeze" v-model="formModel.scoreboardFreezeMinutes"
+                        :useGrouping="false" :min="0" placeholder="默认 0" />
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex flex-col gap-2 w-full">
+                    <label>封榜显示策略</label>
+                    <SelectButton v-model="formModel.hideScoreDuringFreeze" :options="[
+                        { label: '封榜隐藏最新结果', value: true },
+                        { label: '仅记录封榜提交', value: false }
+                    ]" optionLabel="label" optionValue="value" />
                 </div>
             </div>
 

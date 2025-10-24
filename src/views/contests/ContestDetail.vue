@@ -1,13 +1,26 @@
 <script setup lang="ts">
-import type { ContestScoreboardRecord } from '@/api/contests/contest';
+import type {
+    ContestRegistration,
+    ContestRegistrationDecisionPayload,
+    ContestRegistrationQuery,
+    ContestRegistrationStatusCode,
+    ContestScoreboardRecord,
+    ProblemSummaryOption,
+    UserSummaryOption
+} from '@/api/contests/contest';
 import {
     addContestParticipants,
+    createContestRegistration,
     fetchContest,
     fetchContestOptions,
+    fetchContestRegistrations,
     fetchContestScoreboard,
     fetchContestSubmissions,
+    decideContestRegistrations,
     removeContestParticipant,
     saveContestProblems,
+    searchContestProblems,
+    searchContestUsers,
     updateContest,
     type ContestDetail,
     type ContestKindOption,
@@ -24,6 +37,10 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 interface Props {
     contestId: string | number;
+}
+
+interface ProblemDraftItem extends ContestProblemInput {
+    option?: ProblemSummaryOption | null;
 }
 
 const props = defineProps<Props>();
@@ -43,18 +60,46 @@ const editForm = reactive({
     kind: '',
     visible: true,
     startTime: null as Date | null,
-    endTime: null as Date | null
+    endTime: null as Date | null,
+    registrationMode: 'open',
+    registrationStartTime: null as Date | null,
+    registrationEndTime: null as Date | null,
+    maxParticipants: null as number | null,
+    penaltyPerWrong: 20,
+    scoreboardFreezeMinutes: 0,
+    hideScoreDuringFreeze: true
 });
 
 const problemDialogVisible = ref(false);
-const problemDraft = ref<ContestProblemInput[]>([]);
+const problemDraft = ref<ProblemDraftItem[]>([]);
+const problemSuggestions = ref<ProblemSummaryOption[]>([]);
+const problemSearchLoading = ref(false);
 const problemSubmitting = ref(false);
 
-const participantInput = ref('');
+const participantSearchResults = ref<UserSummaryOption[]>([]);
+const selectedParticipants = ref<UserSummaryOption[]>([]);
 const participantSubmitting = ref(false);
+const participantSearchLoading = ref(false);
+const registrationInviteOption = ref<UserSummaryOption | null>(null);
+const registrationInviteSuggestions = ref<UserSummaryOption[]>([]);
+const registrationInviteLoading = ref(false);
+const creatingRegistration = ref(false);
+const registrationStatusOptionsItems: { label: string; value: ContestRegistrationStatusCode }[] = [
+    { label: '待审核', value: 'pending' },
+    { label: '已通过', value: 'approved' },
+    { label: '已驳回', value: 'rejected' },
+    { label: '已取消', value: 'cancelled' }
+];
 
 const scoreboard = ref<ContestScoreboard | null>(null);
 const scoreboardLoading = ref(false);
+
+const registrations = ref<ContestRegistration[]>([]);
+const registrationsLoading = ref(false);
+const registrationPage = ref(1);
+const registrationSize = ref(20);
+const registrationTotal = ref(0);
+const registrationStatusFilter = ref<ContestRegistrationStatusCode | null>(null);
 
 const submissions = ref<ContestSubmission[]>([]);
 const submissionPage = ref(1);
@@ -83,6 +128,7 @@ onMounted(async () => {
     await loadContest();
     await loadScoreboard();
     await loadSubmissions();
+    await loadRegistrations();
 });
 
 watch([verdictFilter, userFilter, problemFilter], () => {
@@ -90,9 +136,17 @@ watch([verdictFilter, userFilter, problemFilter], () => {
     loadSubmissions();
 });
 
+watch(registrationStatusFilter, () => {
+    registrationPage.value = 1;
+    loadRegistrations();
+});
+
 async function loadOptions() {
     try {
         options.value = await fetchContestOptions();
+        if (!editForm.registrationMode && options.value?.registrationModes?.length) {
+            editForm.registrationMode = options.value.registrationModes[0] ?? 'open';
+        }
     } catch (error) {
         toast.add({
             severity: 'warn',
@@ -165,6 +219,70 @@ async function loadSubmissions() {
     }
 }
 
+async function loadRegistrations() {
+    registrationsLoading.value = true;
+    try {
+        const data = await fetchContestRegistrations(contestId.value, {
+            page: registrationPage.value,
+            size: registrationSize.value,
+            status: registrationStatusFilter.value ?? undefined
+        });
+        registrations.value = data.items ?? [];
+        registrationTotal.value = Number(data.total ?? 0);
+        if (data.page !== undefined) {
+            registrationPage.value = Number(data.page);
+        }
+        if (data.size !== undefined) {
+            registrationSize.value = Number(data.size);
+        }
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: '加载失败',
+            detail: (error as Error)?.message ?? '加载报名列表失败',
+            life: 4000
+        });
+    } finally {
+        registrationsLoading.value = false;
+    }
+}
+
+async function updateRegistrationStatus(ids: number[], target: ContestRegistrationStatusCode) {
+    if (!ids.length) {
+        return;
+    }
+    try {
+        await decideContestRegistrations(contestId.value, {
+            registrationIds: ids,
+            targetStatus: target
+        } satisfies ContestRegistrationDecisionPayload);
+        toast.add({
+            severity: 'success',
+            summary: '操作成功',
+            detail: target === 'approved' ? '报名已通过审批' : '报名已驳回',
+            life: 3000
+        });
+        await loadRegistrations();
+        await loadContest();
+        await loadScoreboard();
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: '操作失败',
+            detail: (error as Error)?.message ?? '更新报名状态失败',
+            life: 4000
+        });
+    }
+}
+
+function approveRegistration(registration: ContestRegistration) {
+    updateRegistrationStatus([registration.id], 'approved');
+}
+
+function rejectRegistration(registration: ContestRegistration) {
+    updateRegistrationStatus([registration.id], 'rejected');
+}
+
 function openEditDialog() {
     if (!detail.value) {
         return;
@@ -176,6 +294,17 @@ function openEditDialog() {
     editForm.visible = contest.visible ?? true;
     editForm.startTime = contest.startTime ? new Date(contest.startTime) : null;
     editForm.endTime = contest.endTime ? new Date(contest.endTime) : null;
+    editForm.registrationMode = contest.registrationMode ?? 'open';
+    editForm.registrationStartTime = contest.registrationStartTime
+        ? new Date(contest.registrationStartTime)
+        : null;
+    editForm.registrationEndTime = contest.registrationEndTime
+        ? new Date(contest.registrationEndTime)
+        : null;
+    editForm.maxParticipants = contest.maxParticipants ?? null;
+    editForm.penaltyPerWrong = contest.penaltyPerWrong ?? 20;
+    editForm.scoreboardFreezeMinutes = contest.scoreboardFreezeMinutes ?? 0;
+    editForm.hideScoreDuringFreeze = contest.hideScoreDuringFreeze ?? true;
     editDialogVisible.value = true;
 }
 
@@ -194,16 +323,44 @@ function buildUpsertPayload(): ContestUpsertPayload | null {
         toast.add({ severity: 'warn', summary: '提示', detail: '结束时间必须晚于开始时间', life: 3000 });
         return null;
     }
+    if (
+        editForm.registrationStartTime &&
+        editForm.registrationEndTime &&
+        editForm.registrationEndTime < editForm.registrationStartTime
+    ) {
+        toast.add({ severity: 'warn', summary: '提示', detail: '报名结束时间必须晚于报名开始时间', life: 3000 });
+        return null;
+    }
     const payload: ContestUpsertPayload = {
         title: editForm.title.trim(),
         descriptionMd: editForm.descriptionMd?.trim() || undefined,
         kind: editForm.kind,
         startTime: editForm.startTime.toISOString(),
         endTime: editForm.endTime.toISOString(),
-        visible: editForm.visible
+        visible: editForm.visible,
+        registrationMode: editForm.registrationMode,
+        registrationStartTime: editForm.registrationStartTime
+            ? editForm.registrationStartTime.toISOString()
+            : null,
+        registrationEndTime: editForm.registrationEndTime
+            ? editForm.registrationEndTime.toISOString()
+            : null,
+        maxParticipants:
+            editForm.maxParticipants == null ? null : Number(editForm.maxParticipants),
+        penaltyPerWrong:
+            editForm.penaltyPerWrong == null ? null : Math.max(0, Number(editForm.penaltyPerWrong)),
+        scoreboardFreezeMinutes:
+            editForm.scoreboardFreezeMinutes == null
+                ? null
+                : Math.max(0, Number(editForm.scoreboardFreezeMinutes)),
+        hideScoreDuringFreeze: editForm.hideScoreDuringFreeze
     };
     if (!payload.title) {
         toast.add({ severity: 'warn', summary: '提示', detail: '比赛标题不能为空', life: 3000 });
+        return null;
+    }
+    if (payload.maxParticipants !== null && payload.maxParticipants <= 0) {
+        toast.add({ severity: 'warn', summary: '提示', detail: '参赛人数上限必须为正整数', life: 3000 });
         return null;
     }
     return payload;
@@ -241,16 +398,34 @@ function openProblemDialog() {
         problemId: item.problemId,
         alias: item.alias ?? '',
         points: item.points ?? null,
-        orderNo: item.orderNo ?? null
+        orderNo: item.orderNo ?? null,
+        option: {
+            id: item.problemId,
+            slug: item.problemSlug ?? undefined,
+            title: item.problemTitle ?? undefined,
+            difficulty: item.acceptanceRate != null ? String(item.acceptanceRate) : undefined
+        } as ProblemSummaryOption
     }));
     if (problemDraft.value.length === 0) {
-        problemDraft.value.push({ problemId: 0, alias: '', points: null, orderNo: 10 });
+        problemDraft.value.push({
+            problemId: 0,
+            alias: '',
+            points: null,
+            orderNo: 10,
+            option: null
+        });
     }
     problemDialogVisible.value = true;
 }
 
 function addProblemRow() {
-    problemDraft.value.push({ problemId: 0, alias: '', points: null, orderNo: (problemDraft.value.length + 1) * 10 });
+    problemDraft.value.push({
+        problemId: 0,
+        alias: '',
+        points: null,
+        orderNo: (problemDraft.value.length + 1) * 10,
+        option: null
+    });
 }
 
 function removeProblemRow(index: number) {
@@ -263,7 +438,7 @@ function removeProblemRow(index: number) {
 
 async function submitProblems() {
     const payloadList: ContestProblemInput[] = problemDraft.value.map((item) => ({
-        problemId: Number(item.problemId),
+        problemId: Number(item.problemId || item.option?.id || 0),
         alias: item.alias?.trim() || undefined,
         points: item.points == null ? undefined : Number(item.points),
         orderNo: item.orderNo == null ? undefined : Number(item.orderNo)
@@ -300,17 +475,15 @@ function closeProblemDialog() {
 }
 
 async function addParticipants() {
-    const raw = participantInput.value.trim();
-    if (!raw) {
-        toast.add({ severity: 'warn', summary: '提示', detail: '请填写用户ID', life: 3000 });
+    if (selectedParticipants.value.length === 0) {
+        toast.add({ severity: 'warn', summary: '提示', detail: '请选择需加入的用户', life: 3000 });
         return;
     }
-    const ids = raw
-        .split(/[\s,，]+/)
-        .map((token) => Number(token))
+    const ids = selectedParticipants.value
+        .map((item) => Number(item.id))
         .filter((value) => !Number.isNaN(value) && value > 0);
     if (ids.length === 0) {
-        toast.add({ severity: 'warn', summary: '提示', detail: '请输入有效的用户ID', life: 3000 });
+        toast.add({ severity: 'warn', summary: '提示', detail: '未找到有效的用户ID', life: 3000 });
         return;
     }
     const payload: ContestParticipantsPayload = { userIds: ids };
@@ -318,9 +491,10 @@ async function addParticipants() {
     try {
         await addContestParticipants(contestId.value, payload);
         toast.add({ severity: 'success', summary: '添加成功', detail: '参赛者列表已更新', life: 3000 });
-        participantInput.value = '';
+        selectedParticipants.value = [];
         await loadContest();
         await loadScoreboard();
+        await loadRegistrations();
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -343,6 +517,7 @@ async function removeParticipant(userId: number) {
         toast.add({ severity: 'success', summary: '已移除', detail: '参赛者已移除', life: 3000 });
         await loadContest();
         await loadScoreboard();
+        await loadRegistrations();
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -357,6 +532,19 @@ function kindLabel(kind: string) {
     const list = options.value?.kinds ?? [];
     const match = list.find((item: ContestKindOption) => item.code === kind);
     return match?.displayName ?? kind;
+}
+
+function registrationModeLabel(mode?: string | null) {
+    switch (mode) {
+        case 'open':
+            return '开放报名';
+        case 'approval':
+            return '审核报名';
+        case 'invite_only':
+            return '邀请制';
+        default:
+            return mode ?? '开放报名';
+    }
 }
 
 function statusLabel(status?: string | null) {
@@ -403,6 +591,9 @@ function formatDate(value?: string | null) {
 }
 
 function formatRecord(record: ContestScoreboardRecord) {
+    if (record.pendingAttempts && record.pendingAttempts > 0) {
+        return `${record.alias ?? record.problemId}: 封榜 ${record.pendingAttempts} 次`;
+    }
     if (record.firstAcceptedAt) {
         return `${record.alias ?? record.problemId}: AC`;
     }
@@ -416,6 +607,9 @@ function formatRecord(record: ContestScoreboardRecord) {
 }
 
 function recordSeverity(record: ContestScoreboardRecord) {
+    if (record.pendingAttempts && record.pendingAttempts > 0) {
+        return 'warning';
+    }
     if (record.firstAcceptedAt) {
         return 'success';
     }
@@ -452,6 +646,181 @@ function visibilitySeverity(flag?: boolean | null) {
     return flag ? 'success' : 'info';
 }
 
+async function completeProblemSearch(event: { query: string }) {
+    const keyword = event.query?.trim();
+    if (!keyword) {
+        problemSuggestions.value = [];
+        return;
+    }
+    problemSearchLoading.value = true;
+    try {
+        problemSuggestions.value = await searchContestProblems(keyword, 10);
+    } catch (error) {
+        toast.add({
+            severity: 'warn',
+            summary: '提示',
+            detail: (error as Error)?.message ?? '搜索题目失败',
+            life: 3000
+        });
+    } finally {
+        problemSearchLoading.value = false;
+    }
+}
+
+function problemOptionLabel(option?: ProblemSummaryOption | null) {
+    if (!option) {
+        return '';
+    }
+    const parts = [option.slug ?? option.id, option.title].filter(Boolean);
+    return parts.join(' - ');
+}
+
+function handleProblemSelect(option: ProblemSummaryOption, index: number) {
+    const row = problemDraft.value[index];
+    if (!row) {
+        return;
+    }
+    row.option = option;
+    row.problemId = option.id;
+    if (!row.alias && option.slug) {
+        row.alias = option.slug.toUpperCase();
+    }
+}
+
+function clearProblemSelection(index: number) {
+    const row = problemDraft.value[index];
+    if (!row) {
+        return;
+    }
+    row.option = null;
+    row.problemId = 0;
+}
+
+async function completeParticipantSearch(event: { query: string }) {
+    const keyword = event.query?.trim();
+    if (!keyword) {
+        participantSearchResults.value = [];
+        return;
+    }
+    participantSearchLoading.value = true;
+    try {
+        participantSearchResults.value = await searchContestUsers(keyword, 10);
+    } catch (error) {
+        toast.add({
+            severity: 'warn',
+            summary: '提示',
+            detail: (error as Error)?.message ?? '搜索用户失败',
+            life: 3000
+        });
+    } finally {
+        participantSearchLoading.value = false;
+    }
+}
+
+function participantOptionLabel(option?: UserSummaryOption | null) {
+    if (!option) {
+        return '';
+    }
+    const parts = [option.username, option.displayName].filter(Boolean);
+    return parts.join(' / ');
+}
+
+function onRegistrationPageChange(event: { page: number; rows: number }) {
+    registrationPage.value = event.page + 1;
+    registrationSize.value = event.rows;
+    loadRegistrations();
+}
+
+async function completeRegistrationInviteSearch(event: { query: string }) {
+    const keyword = event.query?.trim();
+    if (!keyword) {
+        registrationInviteSuggestions.value = [];
+        return;
+    }
+    registrationInviteLoading.value = true;
+    try {
+        registrationInviteSuggestions.value = await searchContestUsers(keyword, 10);
+    } catch (error) {
+        toast.add({
+            severity: 'warn',
+            summary: '提示',
+            detail: (error as Error)?.message ?? '搜索用户失败',
+            life: 3000
+        });
+    } finally {
+        registrationInviteLoading.value = false;
+    }
+}
+
+async function createRegistrationInvite() {
+    if (!registrationInviteOption.value) {
+        toast.add({ severity: 'warn', summary: '提示', detail: '请选择需要添加的用户', life: 3000 });
+        return;
+    }
+    creatingRegistration.value = true;
+    try {
+        await createContestRegistration(contestId.value, {
+            userId: registrationInviteOption.value.id,
+            source: 'admin'
+        });
+        toast.add({ severity: 'success', summary: '已创建', detail: '报名记录已添加', life: 3000 });
+        registrationInviteOption.value = null;
+        registrationInviteSuggestions.value = [];
+        await loadRegistrations();
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: '操作失败',
+            detail: (error as Error)?.message ?? '创建报名记录失败',
+            life: 4000
+        });
+    } finally {
+        creatingRegistration.value = false;
+    }
+}
+
+function registrationStatusLabel(status: ContestRegistrationStatusCode) {
+    switch (status) {
+        case 'pending':
+            return '待审核';
+        case 'approved':
+            return '已通过';
+        case 'rejected':
+            return '已驳回';
+        case 'cancelled':
+            return '已取消';
+        default:
+            return status;
+    }
+}
+
+function registrationStatusSeverity(status: ContestRegistrationStatusCode) {
+    switch (status) {
+        case 'pending':
+            return 'info';
+        case 'approved':
+            return 'success';
+        case 'rejected':
+            return 'danger';
+        case 'cancelled':
+        default:
+            return 'secondary';
+    }
+}
+
+function registrationSourceLabel(source?: string | null) {
+    switch (source) {
+        case 'self':
+            return '用户报名';
+        case 'invite':
+            return '邀请';
+        case 'admin':
+            return '管理员添加';
+        default:
+            return source ?? '-';
+    }
+}
+
 function onSubmissionPageChange(event: { page: number; rows: number }) {
     submissionPage.value = event.page + 1;
     submissionSize.value = event.rows;
@@ -459,6 +828,33 @@ function onSubmissionPageChange(event: { page: number; rows: number }) {
 }
 
 const hasContestData = computed(() => detail.value !== null);
+
+const freezeStatusTag = computed(() => {
+    const board = scoreboard.value;
+    if (!board || !board.freezeMinutes || board.freezeMinutes <= 0) {
+        return null;
+    }
+    if (board.freezeActive) {
+        return board.freezeHideScore
+            ? `封榜中 · 隐藏最新结果 · 提前 ${board.freezeMinutes} 分钟`
+            : `封榜中 · 仅标记提交 · 提前 ${board.freezeMinutes} 分钟`;
+    }
+    return `封榜配置 · 提前 ${board.freezeMinutes} 分钟`;
+});
+
+const penaltyTag = computed(() => {
+    const board = scoreboard.value;
+    const penalty = board?.penaltyPerWrong ?? detail.value?.penaltyPerWrong ?? 20;
+    return `罚时 ${penalty} 分钟`;
+});
+
+const pendingSubmissionTag = computed(() => {
+    const count = scoreboard.value?.pendingSubmissionCount ?? 0;
+    if (!count) {
+        return null;
+    }
+    return `封榜待揭晓 ${count} 次提交`;
+});
 
 </script>
 
@@ -512,6 +908,20 @@ const hasContestData = computed(() => detail.value !== null);
                         <div class="flex items-center gap-2">
                             <i class="pi pi-users text-green-500 text-xl"></i>
                             <span class="text-2xl font-bold">{{ detail?.participantCount ?? 0 }}</span>
+                        </div>
+                    </NDescriptionsItem>
+                    <NDescriptionsItem label="报名模式">
+                        <div class="flex items-center gap-2">
+                            <i class="pi pi-sign-in text-color-secondary"></i>
+                            <Tag :value="registrationModeLabel(detail?.registrationMode)" severity="info" />
+                        </div>
+                    </NDescriptionsItem>
+                    <NDescriptionsItem label="人数上限">
+                        <div class="flex items-center gap-2">
+                            <i class="pi pi-sort-amount-up text-color-secondary"></i>
+                            <span class="text-2xl font-bold">
+                                {{ detail?.maxParticipants != null ? detail?.maxParticipants : '不限' }}
+                            </span>
                         </div>
                     </NDescriptionsItem>
                     <NDescriptionsItem label="开始时间">
@@ -594,8 +1004,20 @@ const hasContestData = computed(() => detail.value !== null);
                         <h3 class="text-lg font-semibold m-0">参赛成员</h3>
                     </div>
                     <div class="flex gap-2 flex-wrap">
-                        <InputText v-model="participantInput" placeholder="输入用户ID，逗号分隔" style="min-width: 14rem"
-                            size="small" />
+                        <AutoComplete v-model="selectedParticipants" :suggestions="participantSearchResults"
+                            optionLabel="username" dataKey="id" :completeMethod="completeParticipantSearch"
+                            dropdown multiple :loading="participantSearchLoading" style="min-width: 20rem"
+                            placeholder="搜索用户名或邮箱">
+                            <template #option="{ option }">
+                                <div class="flex flex-column">
+                                    <span class="font-medium">{{ participantOptionLabel(option) }}</span>
+                                    <small class="text-color-secondary">{{ option?.email ?? '无邮箱' }}</small>
+                                </div>
+                            </template>
+                            <template #chip="{ value }">
+                                <span>{{ participantOptionLabel(value) }}</span>
+                            </template>
+                        </AutoComplete>
                         <Button label="添加" icon="pi pi-user-plus" size="small" :loading="participantSubmitting"
                             @click="addParticipants" />
                     </div>
@@ -642,6 +1064,115 @@ const hasContestData = computed(() => detail.value !== null);
             </div>
         </div>
 
+        <!-- 报名审核卡片 -->
+        <div class="col-12 lg:col-6">
+            <div class="card">
+                <div class="flex justify-between mb-4 items-center flex-wrap gap-3">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-user-edit text-xl text-primary"></i>
+                        <h3 class="text-lg font-semibold m-0">报名审核</h3>
+                        <Tag v-if="detail?.pendingRegistrationCount"
+                            :value="`待审核 ${detail?.pendingRegistrationCount}`" severity="warning" />
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <Dropdown v-model="registrationStatusFilter" :options="registrationStatusOptionsItems"
+                            optionLabel="label" optionValue="value" placeholder="全部状态" size="small"
+                            :showClear="true" />
+                        <Button icon="pi pi-refresh" text rounded size="small" :loading="registrationsLoading"
+                            @click="loadRegistrations" />
+                    </div>
+                </div>
+                <div class="flex gap-2 flex-wrap mb-3">
+                    <AutoComplete v-model="registrationInviteOption" :suggestions="registrationInviteSuggestions"
+                        dropdown optionLabel="username" dataKey="id"
+                        :completeMethod="completeRegistrationInviteSearch"
+                        :loading="registrationInviteLoading" placeholder="搜索用户以创建报名"
+                        style="min-width: 20rem">
+                        <template #option="{ option }">
+                            <div class="flex flex-column">
+                                <span class="font-medium">{{ participantOptionLabel(option) }}</span>
+                                <small class="text-color-secondary">{{ option?.email ?? '无邮箱' }}</small>
+                            </div>
+                        </template>
+                    </AutoComplete>
+                    <Button label="创建报名" icon="pi pi-user-plus" size="small"
+                        :loading="creatingRegistration" :disabled="!registrationInviteOption"
+                        @click="createRegistrationInvite" />
+                </div>
+                <div class="text-sm text-color-secondary mb-3">
+                    报名窗口：
+                    <span>
+                        {{ detail?.registrationStartTime ? formatDate(detail?.registrationStartTime) : '立即开放' }}
+                    </span>
+                    <span> 至 </span>
+                    <span>
+                        {{ detail?.registrationEndTime ? formatDate(detail?.registrationEndTime) : '比赛结束前' }}
+                    </span>
+                </div>
+                <Divider class="my-3" />
+                <DataTable :value="registrations" :loading="registrationsLoading" dataKey="id"
+                    :rows="registrationSize" :paginator="true" :lazy="true"
+                    :totalRecords="registrationTotal" :rowsPerPageOptions="[10, 20, 50]"
+                    @page="onRegistrationPageChange" responsiveLayout="stack" stripedRows>
+                    <template #empty>
+                        <NEmpty description="暂无报名记录" class="py-6">
+                            <template #icon>
+                                <i class="pi pi-address-book text-4xl text-color-secondary"></i>
+                            </template>
+                        </NEmpty>
+                    </template>
+                    <Column header="#" style="width: 4rem">
+                        <template #body="{ index }">
+                            <Tag :value="`${index + 1}`" severity="secondary" rounded />
+                        </template>
+                    </Column>
+                    <Column field="username" header="用户">
+                        <template #body="{ data }">
+                            <div class="flex flex-column">
+                                <span class="font-medium">{{ data.username ?? `用户 ${data.userId}` }}</span>
+                                <small class="text-color-secondary">ID: {{ data.userId }}</small>
+                            </div>
+                        </template>
+                    </Column>
+                    <Column field="status" header="状态">
+                        <template #body="{ data }">
+                            <Tag :value="registrationStatusLabel(data.status)"
+                                :severity="registrationStatusSeverity(data.status)" />
+                        </template>
+                    </Column>
+                    <Column field="source" header="来源">
+                        <template #body="{ data }">
+                            <span class="text-color-secondary">{{ registrationSourceLabel(data.source) }}</span>
+                        </template>
+                    </Column>
+                    <Column field="createdAt" header="报名时间">
+                        <template #body="{ data }">
+                            <span class="text-color-secondary text-sm">{{ formatDate(data.createdAt) }}</span>
+                        </template>
+                    </Column>
+                    <Column field="reviewedAt" header="审核时间">
+                        <template #body="{ data }">
+                            <div class="flex flex-column">
+                                <span class="text-color-secondary text-sm">{{ formatDate(data.reviewedAt) }}</span>
+                                <small v-if="data.reviewerName" class="text-color-tertiary">{{
+                                    data.reviewerName }}</small>
+                            </div>
+                        </template>
+                    </Column>
+                    <Column header="操作" style="width: 10rem">
+                        <template #body="{ data }">
+                            <div class="flex gap-2">
+                                <Button v-if="data.status === 'pending'" label="通过" icon="pi pi-check" size="small"
+                                    severity="success" text @click="approveRegistration(data)" />
+                                <Button v-if="data.status === 'pending'" label="驳回" icon="pi pi-times"
+                                    size="small" severity="danger" text @click="rejectRegistration(data)" />
+                            </div>
+                        </template>
+                    </Column>
+                </DataTable>
+            </div>
+        </div>
+
         <!-- 实时榜单卡片 -->
         <div class="col-12">
             <div class="card">
@@ -653,6 +1184,13 @@ const hasContestData = computed(() => detail.value !== null);
                     <Button icon="pi pi-refresh" rounded text v-tooltip.top="'刷新榜单'" @click="loadScoreboard" />
                 </div>
                 <Divider class="my-3" />
+
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <Tag :value="penaltyTag" severity="info" />
+                    <Tag v-if="freezeStatusTag" :value="freezeStatusTag"
+                        :severity="scoreboard?.freezeActive ? 'warning' : 'secondary'" />
+                    <Tag v-if="pendingSubmissionTag" :value="pendingSubmissionTag" severity="danger" />
+                </div>
 
                 <template v-if="scoreboardLoading">
                     <div class="flex flex-col gap-3">
@@ -698,6 +1236,12 @@ const hasContestData = computed(() => detail.value !== null);
                         <Column field="totalScore" header="得分" style="width: 7rem">
                             <template #body="{ data }">
                                 <span class="font-bold text-primary">{{ data.totalScore }}</span>
+                            </template>
+                        </Column>
+                        <Column field="pendingCount" header="封榜待揭" style="width: 8rem">
+                            <template #body="{ data }">
+                                <Tag v-if="data.pendingCount" :value="`${data.pendingCount}`" severity="warning" />
+                                <span v-else class="text-color-secondary">-</span>
                             </template>
                         </Column>
                         <Column field="penalty" header="罚时" style="width: 7rem">
@@ -887,25 +1431,48 @@ const hasContestData = computed(() => detail.value !== null);
                     <!-- 题目ID和别名 -->
                     <div class="flex flex-col md:flex-row gap-4 mb-3">
                         <div class="flex flex-col gap-2 w-full">
+                            <label :for="`problem-search-${index}`">题目搜索</label>
+                            <AutoComplete :id="`problem-search-${index}`" v-model="problemDraft[index].option"
+                                :suggestions="problemSuggestions" optionLabel="title" dataKey="id" dropdown
+                                :loading="problemSearchLoading" :completeMethod="completeProblemSearch"
+                                placeholder="输入标题或别名关键词"
+                                @item-select="({ value }) => handleProblemSelect(value, index)"
+                                @clear="clearProblemSelection(index)">
+                                <template #option="{ option }">
+                                    <div class="flex flex-column">
+                                        <span class="font-medium">{{ problemOptionLabel(option) }}</span>
+                                        <small class="text-color-secondary">ID: {{ option.id }}</small>
+                                    </div>
+                                </template>
+                                <template #chip="{ value }">
+                                    <span>{{ problemOptionLabel(value) || `#${item.problemId || '-'}` }}</span>
+                                </template>
+                            </AutoComplete>
+                            <small class="text-color-secondary">选择后可继续调整题目ID或别名</small>
+                        </div>
+                        <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-id-${index}`">题目ID <span class="text-red-500">*</span></label>
                             <InputNumber :id="`problem-id-${index}`" v-model="item.problemId" :useGrouping="false"
                                 :min="1" placeholder="输入题目ID" />
                         </div>
+                    </div>
+
+                    <!-- 别名、分值、排序值 -->
+                    <div class="flex flex-col md:flex-row gap-4">
                         <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-alias-${index}`">别名 (可选)</label>
                             <InputText :id="`problem-alias-${index}`" v-model="item.alias"
                                 placeholder="例如：A, B, C 或自定义" />
                         </div>
-                    </div>
-
-                    <!-- 分值和排序值 -->
-                    <div class="flex flex-col md:flex-row gap-4">
                         <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-points-${index}`">分值</label>
                             <InputNumber :id="`problem-points-${index}`" v-model="item.points" :useGrouping="false"
                                 :min="0" placeholder="题目分值" />
                             <small class="text-color-secondary">留空表示不计分</small>
                         </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row gap-4">
                         <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-order-${index}`">排序值</label>
                             <InputNumber :id="`problem-order-${index}`" v-model="item.orderNo" :useGrouping="false"
