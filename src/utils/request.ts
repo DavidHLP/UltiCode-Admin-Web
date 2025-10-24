@@ -24,7 +24,9 @@ export interface ApiResponse<T = unknown> {
     metadata?: Record<string, unknown>;
 }
 
-export type RequestConfig = AxiosRequestConfig;
+export interface RequestConfig extends AxiosRequestConfig {
+    sensitiveToken?: string;
+}
 
 const API_BASE_URL =
     import.meta.env?.VITE_API_BASE_URL ?? (import.meta.env?.DEV ? 'http://localhost:9999' : '/');
@@ -34,6 +36,7 @@ const REFRESH_FAILURE_MESSAGE = '登录状态已过期，请重新登录';
 
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
     _retry?: boolean;
+    sensitiveToken?: string;
 }
 
 let refreshPromise: Promise<void> | null = null;
@@ -117,6 +120,15 @@ service.interceptors.request.use(
 
         const authorization = authStore.authorizationHeader;
         ensureAuthorizationHeader(config, authorization);
+        const retryableConfig = config as RetryableRequestConfig;
+        if (retryableConfig.sensitiveToken) {
+            const headers =
+                    config.headers instanceof AxiosHeaders
+                            ? config.headers
+                            : new AxiosHeaders(config.headers);
+            headers.set('X-Sensitive-Action-Token', retryableConfig.sensitiveToken);
+            config.headers = headers;
+        }
         return config;
     },
     (error) => Promise.reject(error)

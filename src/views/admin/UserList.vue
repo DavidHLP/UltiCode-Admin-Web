@@ -2,6 +2,9 @@
 import { fetchRoleOptions, type RoleDto } from '@/api/admin/role';
 import type { UserView } from '@/api/admin/users';
 import { createUser, fetchUsers, updateUser, type UserCreatePayload, type UserUpdatePayload } from '@/api/admin/users';
+import { useSensitiveDialog } from '@/composables/useSensitiveDialog';
+import { useAuthStore } from '@/stores/auth';
+import InputOtp from 'primevue/inputotp';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -28,6 +31,16 @@ const saving = ref(false);
 const roles = ref<RoleDto[]>([]);
 const editingId = ref<number | null>(null);
 const toast = useToast();
+const authStore = useAuthStore();
+const {
+    visible: twoFactorDialogVisible,
+    code: twoFactorCode,
+    loading: twoFactorLoading,
+    errorMessage: twoFactorError,
+    open: requestSensitiveToken,
+    confirm: confirmSensitiveToken,
+    cancel: cancelSensitiveToken
+} = useSensitiveDialog(toast);
 
 // 请求控制
 let abortController: AbortController | null = null;
@@ -218,6 +231,10 @@ async function submitForm() {
         return;
     }
 
+    const sensitiveToken = await acquireSensitiveToken();
+    if (!sensitiveToken) {
+        return;
+    }
     saving.value = true;
     try {
         if (isCreate) {
@@ -230,7 +247,7 @@ async function submitForm() {
                 status: form.value.status,
                 roleIds: form.value.roleIds
             };
-            await createUser(payload);
+            await createUser(payload, sensitiveToken);
             toast.add({ severity: 'success', summary: '创建成功', detail: '用户已创建', life: 3000 });
         } else {
             const payload: UserUpdatePayload = {
@@ -244,7 +261,7 @@ async function submitForm() {
             if (form.value.password.trim()) {
                 payload.password = form.value.password.trim();
             }
-            await updateUser(editingId.value!, payload);
+            await updateUser(editingId.value!, payload, sensitiveToken);
             toast.add({ severity: 'success', summary: '更新成功', detail: '用户信息已更新', life: 3000 });
         }
         dialogVisible.value = false;
@@ -258,7 +275,12 @@ async function submitForm() {
         });
     } finally {
         saving.value = false;
+        authStore.clearSensitiveToken();
     }
+}
+
+async function acquireSensitiveToken(): Promise<string | null> {
+    return await requestSensitiveToken();
 }
 
 function onPageChange(event: { page: number; rows: number }) {
@@ -413,6 +435,23 @@ function formatDate(value?: string | null) {
             </div>
         </form>
     </Dialog>
+
+    <Dialog v-model:visible="twoFactorDialogVisible" modal header="二次验证"
+        :style="{ width: '22rem' }" :draggable="false">
+        <div class="space-y-3">
+            <p class="text-sm text-surface-500 dark:text-surface-300">
+                请输入 6 位二次验证码，以确认本次用户管理操作。
+            </p>
+            <div class="flex justify-center">
+                <InputOtp v-model="twoFactorCode" :length="6" mask class="otp-input" />
+            </div>
+            <p v-if="twoFactorError" class="text-xs text-red-500 text-center">{{ twoFactorError }}</p>
+            <div class="flex justify-end gap-2 pt-2">
+                <Button label="取消" severity="secondary" @click="cancelSensitiveToken" />
+                <Button label="确认" icon="pi pi-shield" :loading="twoFactorLoading" @click="confirmSensitiveToken" />
+            </div>
+        </div>
+    </Dialog>
 </template>
 
 <style scoped>
@@ -422,5 +461,12 @@ function formatDate(value?: string | null) {
 }
 .form-grid {
     gap: 1.5rem;
+}
+
+.otp-input :deep(.p-inputotp-input) {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.25rem;
+    text-align: center;
 }
 </style>

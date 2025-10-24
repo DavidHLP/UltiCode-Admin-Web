@@ -1,11 +1,15 @@
 import {
+    disableTwoFactor as disableTwoFactorRequest,
+    enableTwoFactor as enableTwoFactorRequest,
     fetchProfile,
+    issueSensitiveActionToken,
     login as loginRequest,
     refreshToken as refreshTokenRequest,
     register as registerRequest,
     type AuthResponse,
     type LoginPayload,
     type RegisterPayload,
+    type TwoFactorSetupResponse,
     type UserProfile
 } from '@/api/auth/auth';
 import { defineStore } from 'pinia';
@@ -17,9 +21,18 @@ interface AuthState {
     accessTokenExpiresAt: number | null;
     refreshTokenExpiresAt: number | null;
     user: UserProfile | null;
+    twoFactorSetup: TwoFactorSetupResponse | null;
+    sensitiveToken: string | null;
 }
 
-interface StoredAuthState extends AuthState {}
+interface StoredAuthState {
+    tokenType: string | null;
+    accessToken: string | null;
+    refreshToken: string | null;
+    accessTokenExpiresAt: number | null;
+    refreshTokenExpiresAt: number | null;
+    user: UserProfile | null;
+}
 
 const STORAGE_KEY = 'admin-console-auth';
 const ACCESS_TOKEN_REFRESH_THRESHOLD = 15_000; // 15s 提前刷新
@@ -82,7 +95,9 @@ export const useAuthStore = defineStore('auth', {
             refreshToken: persisted.refreshToken ?? null,
             accessTokenExpiresAt: persisted.accessTokenExpiresAt ?? null,
             refreshTokenExpiresAt: persisted.refreshTokenExpiresAt ?? null,
-            user: persisted.user ?? null
+            user: persisted.user ?? null,
+            twoFactorSetup: null,
+            sensitiveToken: null
         };
     },
     getters: {
@@ -129,6 +144,8 @@ export const useAuthStore = defineStore('auth', {
             this.accessTokenExpiresAt = null;
             this.refreshTokenExpiresAt = null;
             this.user = null;
+            this.twoFactorSetup = null;
+            this.sensitiveToken = null;
             persistState(null);
         },
         persist() {
@@ -175,6 +192,23 @@ export const useAuthStore = defineStore('auth', {
             const profile = await fetchProfile();
             this.setUser(profile);
             return profile;
+        },
+        async enableTwoFactor() {
+            const setup = await enableTwoFactorRequest();
+            this.twoFactorSetup = setup;
+            return setup;
+        },
+        async disableTwoFactor() {
+            await disableTwoFactorRequest();
+            this.twoFactorSetup = null;
+        },
+        async obtainSensitiveToken(twoFactorCode: string) {
+            const token = await issueSensitiveActionToken(twoFactorCode);
+            this.sensitiveToken = token;
+            return token;
+        },
+        clearSensitiveToken() {
+            this.sensitiveToken = null;
         }
     }
 });

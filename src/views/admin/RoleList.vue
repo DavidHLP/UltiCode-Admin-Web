@@ -8,6 +8,9 @@ import {
     type RoleUpdatePayload,
     type RoleView
 } from '@/api/admin/role';
+import { useAuthStore } from '@/stores/auth';
+import { useSensitiveDialog } from '@/composables/useSensitiveDialog';
+import InputOtp from 'primevue/inputotp';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
@@ -24,6 +27,16 @@ const dialogVisible = ref(false);
 const saving = ref(false);
 const editingId = ref<number | null>(null);
 const toast = useToast();
+const authStore = useAuthStore();
+const {
+    visible: twoFactorDialogVisible,
+    code: twoFactorCode,
+    loading: twoFactorLoading,
+    errorMessage: twoFactorError,
+    open: requestSensitiveToken,
+    confirm: confirmSensitiveToken,
+    cancel: cancelSensitiveToken
+} = useSensitiveDialog(toast);
 
 const form = ref<RoleForm>({
     code: '',
@@ -99,15 +112,19 @@ async function submitForm() {
     const remarkRaw = form.value.remark?.trim();
     const remark = remarkRaw === undefined || remarkRaw === '' ? null : remarkRaw;
 
+    const sensitiveToken = await acquireSensitiveToken();
+    if (!sensitiveToken) {
+        return;
+    }
     saving.value = true;
     try {
         if (editingId.value === null) {
             const payload: RoleCreatePayload = { code, name, remark };
-            await createRole(payload);
+            await createRole(payload, sensitiveToken);
             toast.add({ severity: 'success', summary: '创建成功', detail: '角色已创建', life: 3000 });
         } else {
             const payload: RoleUpdatePayload = { code, name, remark };
-            await updateRole(editingId.value, payload);
+            await updateRole(editingId.value, payload, sensitiveToken);
             toast.add({ severity: 'success', summary: '更新成功', detail: '角色信息已更新', life: 3000 });
         }
         dialogVisible.value = false;
@@ -121,6 +138,7 @@ async function submitForm() {
         });
     } finally {
         saving.value = false;
+        authStore.clearSensitiveToken();
     }
 }
 
@@ -129,8 +147,12 @@ async function removeRole(role: RoleView) {
     if (!confirmed) {
         return;
     }
+    const sensitiveToken = await acquireSensitiveToken();
+    if (!sensitiveToken) {
+        return;
+    }
     try {
-        await deleteRole(role.id);
+        await deleteRole(role.id, sensitiveToken);
         toast.add({ severity: 'success', summary: '删除成功', detail: '角色已删除', life: 3000 });
         await loadRoles();
     } catch (error) {
@@ -140,6 +162,8 @@ async function removeRole(role: RoleView) {
             detail: (error as Error)?.message ?? '删除角色失败',
             life: 4000
         });
+    } finally {
+        authStore.clearSensitiveToken();
     }
 }
 
@@ -158,6 +182,10 @@ function formatDate(value?: string | null) {
         hour: '2-digit',
         minute: '2-digit'
     }).format(date);
+}
+
+async function acquireSensitiveToken(): Promise<string | null> {
+    return await requestSensitiveToken();
 }
 </script>
 
@@ -233,6 +261,23 @@ function formatDate(value?: string | null) {
             </div>
         </form>
     </Dialog>
+
+    <Dialog v-model:visible="twoFactorDialogVisible" modal header="二次验证"
+        :style="{ width: '22rem' }" :draggable="false">
+        <div class="space-y-3">
+            <p class="text-sm text-surface-500 dark:text-surface-300">
+                为确保安全，请输入绑定的 6 位二次验证码。
+            </p>
+            <div class="flex justify-center">
+                <InputOtp v-model="twoFactorCode" :length="6" mask class="otp-input" />
+            </div>
+            <p v-if="twoFactorError" class="text-xs text-red-500 text-center">{{ twoFactorError }}</p>
+            <div class="flex justify-end gap-2 pt-2">
+                <Button label="取消" severity="secondary" @click="cancelSensitiveToken" />
+                <Button label="确认" icon="pi pi-shield" :loading="twoFactorLoading" @click="confirmSensitiveToken" />
+            </div>
+        </div>
+    </Dialog>
 </template>
 
 <style scoped>
@@ -246,5 +291,12 @@ function formatDate(value?: string | null) {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+}
+
+.otp-input :deep(.p-inputotp-input) {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.25rem;
+    text-align: center;
 }
 </style>
