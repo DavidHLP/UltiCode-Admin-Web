@@ -10,6 +10,7 @@ import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
 type FilterOption = { label: string; value: string };
+type TagSeverity = 'success' | 'info' | 'warning' | 'danger' | undefined;
 
 const reactions = ref<ReactionView[]>([]);
 const total = ref(0);
@@ -127,10 +128,12 @@ async function removeReaction(row: ReactionView) {
 }
 
 function viewReactionDetail(row: ReactionView) {
+    const risk = row.riskLevel ? `，风险：${getRiskLabel(row.riskLevel)}` : '';
+    const hits = row.sensitiveHits?.length ? `，命中词：${row.sensitiveHits.join('、')}` : '';
     toast.add({
-        severity: 'info',
+        severity: row.sensitiveFlag ? 'warn' : 'info',
         summary: '反馈详情',
-        detail: `用户${row.userId}对${row.entityType}(${row.entityId})的${row.kind}反馈`,
+        detail: `用户${row.userId}对${row.entityType}(${row.entityId})的${row.kind}反馈${risk}${hits}`,
         life: 5000
     });
 }
@@ -152,6 +155,40 @@ function copyReactionInfo(row: ReactionView) {
             life: 3000
         });
     });
+}
+
+function getSensitiveLabel(flag: boolean | null | undefined) {
+    return flag ? '敏感' : '正常';
+}
+
+function getSensitiveSeverity(flag: boolean | null | undefined): TagSeverity {
+    return flag ? 'danger' : 'success';
+}
+
+function getRiskLabel(risk: string | null | undefined) {
+    switch (risk) {
+        case 'high':
+            return '高';
+        case 'medium':
+            return '中';
+        case 'low':
+            return '低';
+        default:
+            return risk ?? '-';
+    }
+}
+
+function getRiskSeverity(risk: string | null | undefined): TagSeverity {
+    switch (risk) {
+        case 'high':
+            return 'danger';
+        case 'medium':
+            return 'warning';
+        case 'low':
+            return 'success';
+        default:
+            return 'info';
+    }
 }
 </script>
 
@@ -185,6 +222,21 @@ function copyReactionInfo(row: ReactionView) {
                     <Column field="kind" header="反馈类型" sortable />
                     <Column field="source" header="来源" sortable />
                     <Column field="weight" header="权重" sortable />
+                    <Column field="sensitiveFlag" header="敏感">
+                        <template #body="slotProps">
+                            <Tag :value="getSensitiveLabel(slotProps.data.sensitiveFlag)"
+                                :severity="getSensitiveSeverity(slotProps.data.sensitiveFlag)" />
+                        </template>
+                    </Column>
+                    <Column field="riskLevel" header="风险">
+                        <template #body="slotProps">
+                            <template v-if="slotProps.data.riskLevel">
+                                <Tag :value="getRiskLabel(slotProps.data.riskLevel)"
+                                    :severity="getRiskSeverity(slotProps.data.riskLevel)" />
+                            </template>
+                            <span v-else>-</span>
+                        </template>
+                    </Column>
                     <Column field="metadata" header="附加信息">
                         <template #body="slotProps">
                             <span class="block text-overflow-ellipsis whitespace-nowrap" style="max-width: 16rem">{{

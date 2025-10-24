@@ -11,6 +11,7 @@ import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
 type FilterOption = { label: string; value: string };
+type TagSeverity = 'success' | 'info' | 'warning' | 'danger' | undefined;
 
 const bookmarks = ref<BookmarkView[]>([]);
 const total = ref(0);
@@ -148,6 +149,40 @@ const getActionItems = (bookmark: BookmarkView) => [
         command: () => promptDelete(bookmark)
     }
 ];
+
+function getSensitiveLabel(flag: boolean | null | undefined) {
+    return flag ? '敏感' : '正常';
+}
+
+function getSensitiveSeverity(flag: boolean | null | undefined): TagSeverity {
+    return flag ? 'danger' : 'success';
+}
+
+function getRiskLabel(risk: string | null | undefined) {
+    switch (risk) {
+        case 'high':
+            return '高';
+        case 'medium':
+            return '中';
+        case 'low':
+            return '低';
+        default:
+            return risk ?? '-';
+    }
+}
+
+function getRiskSeverity(risk: string | null | undefined): TagSeverity {
+    switch (risk) {
+        case 'high':
+            return 'danger';
+        case 'medium':
+            return 'warning';
+        case 'low':
+            return 'success';
+        default:
+            return 'info';
+    }
+}
 </script>
 
 <template>
@@ -183,6 +218,21 @@ const getActionItems = (bookmark: BookmarkView) => [
                         <template #body="slotProps">
                             <span class="block text-overflow-ellipsis whitespace-nowrap" style="max-width: 16rem">{{
                                 slotProps.data.note ?? '-' }}</span>
+                        </template>
+                    </Column>
+                    <Column field="sensitiveFlag" header="敏感">
+                        <template #body="slotProps">
+                            <Tag :value="getSensitiveLabel(slotProps.data.sensitiveFlag)"
+                                :severity="getSensitiveSeverity(slotProps.data.sensitiveFlag)" />
+                        </template>
+                    </Column>
+                    <Column field="riskLevel" header="风险">
+                        <template #body="slotProps">
+                            <template v-if="slotProps.data.riskLevel">
+                                <Tag :value="getRiskLabel(slotProps.data.riskLevel)"
+                                    :severity="getRiskSeverity(slotProps.data.riskLevel)" />
+                            </template>
+                            <span v-else>-</span>
                         </template>
                     </Column>
                     <Column field="tags" header="标签">
@@ -236,6 +286,28 @@ const getActionItems = (bookmark: BookmarkView) => [
                                         </NDescriptionsItem>
                                         <NDescriptionsItem label="备注">
                                             <div class="whitespace-pre-wrap">{{ slotProps.data.note ?? '-' }}</div>
+                                        </NDescriptionsItem>
+                                    </NDescriptions>
+                                </AccordionTab>
+                                <AccordionTab header="敏感信息">
+                                    <NDescriptions bordered :column="1" label-placement="left" size="small">
+                                        <NDescriptionsItem label="敏感标记">
+                                            <Tag :value="getSensitiveLabel(slotProps.data.sensitiveFlag)"
+                                                :severity="getSensitiveSeverity(slotProps.data.sensitiveFlag)" />
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="风险等级">
+                                            <template v-if="slotProps.data.riskLevel">
+                                                <Tag :value="getRiskLabel(slotProps.data.riskLevel)"
+                                                    :severity="getRiskSeverity(slotProps.data.riskLevel)" />
+                                            </template>
+                                            <span v-else>-</span>
+                                        </NDescriptionsItem>
+                                        <NDescriptionsItem label="命中词">
+                                            <div v-if="slotProps.data.sensitiveHits?.length" class="flex gap-1 flex-wrap">
+                                                <Tag v-for="hit in slotProps.data.sensitiveHits" :key="hit"
+                                                    severity="danger" :value="hit" />
+                                            </div>
+                                            <span v-else>-</span>
                                         </NDescriptionsItem>
                                     </NDescriptions>
                                 </AccordionTab>

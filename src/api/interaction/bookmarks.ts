@@ -11,6 +11,9 @@ export interface BookmarkView {
     source: string;
     createdAt: string;
     updatedAt: string;
+    sensitiveFlag?: boolean | null;
+    sensitiveHits: string[];
+    riskLevel?: string | null;
 }
 
 export interface BookmarkQuery {

@@ -11,6 +11,9 @@ export interface ReactionView {
     metadata?: string | null;
     createdAt: string;
     updatedAt: string;
+    sensitiveFlag?: boolean | null;
+    sensitiveHits: string[];
+    riskLevel?: string | null;
 }
 
 export interface ReactionQuery {
