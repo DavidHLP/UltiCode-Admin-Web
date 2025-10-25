@@ -38,6 +38,10 @@ const model = ref([
         items: [{ label: '比赛列表', icon: 'pi pi-fw pi-flag', to: '/contests' }]
     },
     {
+        label: '评测调度',
+        items: [{ label: '节点与队列', icon: 'pi pi-fw pi-server', to: '/judge/monitor' }]
+    },
+    {
         label: '社区互动',
         items: [
             { label: '评论管理', icon: 'pi pi-fw pi-comments', to: '/interaction/comments' },

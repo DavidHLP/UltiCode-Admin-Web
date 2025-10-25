@@ -242,6 +242,19 @@ const interactionRoutes: RouteRecordRaw[] = [
     }
 ];
 
+// ==================== 评测调度路由 ====================
+const judgeRoutes: RouteRecordRaw[] = [
+    {
+        path: '/judge/monitor',
+        name: 'judgeMonitor',
+        component: () => import('@/views/judge/JudgeMonitor.vue'),
+        meta: {
+            requiresAuth: true,
+            breadcrumb: [{ label: '评测调度' }, { label: '节点与队列' }]
+        }
+    }
+];
+
 // ==================== 认证相关路由 ====================
 const authRoutes: RouteRecordRaw[] = [
     {
@@ -296,7 +309,8 @@ const adminChildren: RouteRecordRaw[] = [
     ...securityRoutes,
     ...problemRoutes,
     ...contestRoutes,
-    ...interactionRoutes
+    ...interactionRoutes,
+    ...judgeRoutes
 ];
 
 const routes: RouteRecordRaw[] = [
