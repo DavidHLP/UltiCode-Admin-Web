@@ -6,6 +6,7 @@ import {
     login as loginRequest,
     refreshToken as refreshTokenRequest,
     register as registerRequest,
+    requestSensitiveActionCode,
     type AuthResponse,
     type LoginPayload,
     type RegisterPayload,
@@ -202,8 +203,11 @@ export const useAuthStore = defineStore('auth', {
             await disableTwoFactorRequest();
             this.twoFactorSetup = null;
         },
-        async obtainSensitiveToken(twoFactorCode: string) {
-            const token = await issueSensitiveActionToken(twoFactorCode);
+        async requestSensitiveCode() {
+            await requestSensitiveActionCode();
+        },
+        async obtainSensitiveToken(verificationCode: string) {
+            const token = await issueSensitiveActionToken(verificationCode);
             this.sensitiveToken = token;
             return token;
         },

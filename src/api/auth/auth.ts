@@ -137,11 +137,18 @@ export function disableTwoFactor() {
     });
 }
 
-export function issueSensitiveActionToken(twoFactorCode: string) {
+export function requestSensitiveActionCode() {
+    return requestData<void>({
+        url: `${BASE_URL}/sensitive-token/code`,
+        method: 'POST'
+    });
+}
+
+export function issueSensitiveActionToken(verificationCode: string) {
     return requestData<string>({
         url: `${BASE_URL}/sensitive-token`,
         method: 'POST',
-        data: { twoFactorCode }
+        data: { verificationCode }
     });
 }
 

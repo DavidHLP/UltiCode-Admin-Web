@@ -9,24 +9,22 @@ import {
     type JudgeJobDetailView,
     type JudgeJobQuery
 } from '@/api/judge';
-import { useSensitiveDialog } from '@/composables/useSensitiveDialog';
+import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
 import { useAuthStore } from '@/stores/auth';
-import InputOtp from 'primevue/inputotp';
 import Tag from 'primevue/tag';
 import { onMounted, ref, computed } from 'vue';
 import { useToast } from 'primevue/usetoast';
 
 const toast = useToast();
 const authStore = useAuthStore();
-const {
-    visible: twoFactorDialogVisible,
-    code: twoFactorCode,
-    loading: twoFactorLoading,
-    errorMessage: twoFactorError,
-    open: requestSensitiveToken,
-    confirm: confirmSensitiveToken,
-    cancel: cancelSensitiveToken
-} = useSensitiveDialog(toast);
+const sensitiveDialogRef = ref<SensitiveActionDialogExpose | null>(null);
+
+async function requestSensitiveToken() {
+    if (!sensitiveDialogRef.value) {
+        return null;
+    }
+    return sensitiveDialogRef.value.requestToken();
+}
 
 const nodes = ref<JudgeNodeView[]>([]);
 const nodeLoading = ref(false);
@@ -568,22 +566,7 @@ const selectedArtifactKind = (artifactKind: string) => {
         </template>
     </Dialog>
 
-    <Dialog v-model:visible="twoFactorDialogVisible" header="敏感操作验证" :modal="true" :style="{ width: '400px' }"
-        :breakpoints="{ '960px': '95vw' }">
-        <div class="text-sm text-surface-500 dark:text-surface-300 mb-4">
-            请输入 6 位一次性验证码以继续重试任务。
-        </div>
-        <div class="flex justify-center mb-4">
-            <InputOtp v-model="twoFactorCode" integerOnly :length="6" inputClass="w-3rem text-center" />
-        </div>
-        <div v-if="twoFactorError" class="text-red-500 text-center text-sm mb-3">
-            {{ twoFactorError }}
-        </div>
-        <div class="flex justify-end gap-2">
-            <Button label="取消" severity="secondary" @click="cancelSensitiveToken" />
-            <Button label="确认" :loading="twoFactorLoading" @click="confirmSensitiveToken" />
-        </div>
-    </Dialog>
+    <SensitiveActionDialog ref="sensitiveDialogRef" />
 </template>
 
 <style scoped>

@@ -10,9 +10,8 @@ import {
     type RoleUpdatePayload,
     type RoleView
 } from '@/api/admin/role';
-import { useSensitiveDialog } from '@/composables/useSensitiveDialog';
+import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
 import { useAuthStore } from '@/stores/auth';
-import InputOtp from 'primevue/inputotp';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 
@@ -32,15 +31,14 @@ const saving = ref(false);
 const editingId = ref<number | null>(null);
 const toast = useToast();
 const authStore = useAuthStore();
-const {
-    visible: twoFactorDialogVisible,
-    code: twoFactorCode,
-    loading: twoFactorLoading,
-    errorMessage: twoFactorError,
-    open: requestSensitiveToken,
-    confirm: confirmSensitiveToken,
-    cancel: cancelSensitiveToken
-} = useSensitiveDialog(toast);
+const sensitiveDialogRef = ref<SensitiveActionDialogExpose | null>(null);
+
+async function requestSensitiveToken() {
+    if (!sensitiveDialogRef.value) {
+        return null;
+    }
+    return sensitiveDialogRef.value.requestToken();
+}
 
 const form = ref<RoleForm>({
     code: '',
@@ -317,21 +315,7 @@ async function acquireSensitiveToken(): Promise<string | null> {
         </form>
     </Dialog>
 
-    <Dialog v-model:visible="twoFactorDialogVisible" modal header="二次验证" :style="{ width: '22rem' }" :draggable="false">
-        <div class="space-y-3">
-            <p class="text-sm text-surface-500 dark:text-surface-300">
-                为确保安全，请输入绑定的 6 位二次验证码。
-            </p>
-            <div class="flex justify-center">
-                <InputOtp v-model="twoFactorCode" :length="6" mask class="otp-input" />
-            </div>
-            <p v-if="twoFactorError" class="text-xs text-red-500 text-center">{{ twoFactorError }}</p>
-            <div class="flex justify-end gap-2 pt-2">
-                <Button label="取消" severity="secondary" @click="cancelSensitiveToken" />
-                <Button label="确认" icon="pi pi-shield" :loading="twoFactorLoading" @click="confirmSensitiveToken" />
-            </div>
-        </div>
-    </Dialog>
+    <SensitiveActionDialog ref="sensitiveDialogRef" />
 </template>
 
 <style scoped>
@@ -347,10 +331,4 @@ async function acquireSensitiveToken(): Promise<string | null> {
     gap: 1.25rem;
 }
 
-.otp-input :deep(.p-inputotp-input) {
-    width: 3rem;
-    height: 3rem;
-    font-size: 1.25rem;
-    text-align: center;
-}
 </style>

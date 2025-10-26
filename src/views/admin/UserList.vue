@@ -2,9 +2,8 @@
 import { fetchRoleOptions, type RoleDto } from '@/api/admin/role';
 import type { UserView } from '@/api/admin/users';
 import { createUser, fetchUsers, updateUser, type UserCreatePayload, type UserUpdatePayload } from '@/api/admin/users';
-import { useSensitiveDialog } from '@/composables/useSensitiveDialog';
+import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
 import { useAuthStore } from '@/stores/auth';
-import InputOtp from 'primevue/inputotp';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -32,15 +31,14 @@ const roles = ref<RoleDto[]>([]);
 const editingId = ref<number | null>(null);
 const toast = useToast();
 const authStore = useAuthStore();
-const {
-    visible: twoFactorDialogVisible,
-    code: twoFactorCode,
-    loading: twoFactorLoading,
-    errorMessage: twoFactorError,
-    open: requestSensitiveToken,
-    confirm: confirmSensitiveToken,
-    cancel: cancelSensitiveToken
-} = useSensitiveDialog(toast);
+const sensitiveDialogRef = ref<SensitiveActionDialogExpose | null>(null);
+
+async function requestSensitiveToken() {
+    if (!sensitiveDialogRef.value) {
+        return null;
+    }
+    return sensitiveDialogRef.value.requestToken();
+}
 
 // 请求控制
 let abortController: AbortController | null = null;
@@ -441,21 +439,7 @@ function formatDate(value?: string | null) {
         </form>
     </Dialog>
 
-    <Dialog v-model:visible="twoFactorDialogVisible" modal header="二次验证" :style="{ width: '22rem' }" :draggable="false">
-        <div class="space-y-3">
-            <p class="text-sm text-surface-500 dark:text-surface-300">
-                请输入 6 位二次验证码，以确认本次用户管理操作。
-            </p>
-            <div class="flex justify-center">
-                <InputOtp v-model="twoFactorCode" :length="6" mask class="otp-input" />
-            </div>
-            <p v-if="twoFactorError" class="text-xs text-red-500 text-center">{{ twoFactorError }}</p>
-            <div class="flex justify-end gap-2 pt-2">
-                <Button label="取消" severity="secondary" @click="cancelSensitiveToken" />
-                <Button label="确认" icon="pi pi-shield" :loading="twoFactorLoading" @click="confirmSensitiveToken" />
-            </div>
-        </div>
-    </Dialog>
+    <SensitiveActionDialog ref="sensitiveDialogRef" />
 </template>
 
 <style scoped>
@@ -468,10 +452,4 @@ function formatDate(value?: string | null) {
     gap: 1.5rem;
 }
 
-.otp-input :deep(.p-inputotp-input) {
-    width: 3rem;
-    height: 3rem;
-    font-size: 1.25rem;
-    text-align: center;
-}
 </style>
