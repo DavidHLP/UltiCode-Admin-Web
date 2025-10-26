@@ -189,11 +189,13 @@ function formatDate(value?: string | null) {
                     </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <div class="flex gap-2">
-                                <Button label="编辑" icon="pi pi-pencil" text @click="openEdit(data)" />
-                                <Button label="删除" icon="pi pi-trash" severity="danger" text
-                                    @click="removePermission(data)" />
-                            </div>
+                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
+                                {
+                                    label: '删除权限',
+                                    icon: 'pi pi-trash',
+                                    command: () => removePermission(data)
+                                }
+                            ]" @click="openEdit(data)" />
                         </template>
                     </Column>
                     <template #empty>

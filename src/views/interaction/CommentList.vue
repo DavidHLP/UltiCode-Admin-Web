@@ -389,21 +389,11 @@ function copyCommentId(comment: CommentSummary) {
                     <Column field="updatedAt" header="更新时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <SplitButton label="审核" icon="pi pi-check" severity="info" size="small" :model="[
+                            <SplitButton label="审核" icon="pi pi-check" size="small" :model="[
                                 {
-                                    label: '编辑内容',
+                                    label: '编辑',
                                     icon: 'pi pi-pencil',
                                     command: () => openEditDialog(slotProps.data)
-                                },
-                                {
-                                    label: expandedRows[slotProps.data.id] ? '收起详情' : '展开详情',
-                                    icon: expandedRows[slotProps.data.id] ? 'pi pi-chevron-up' : 'pi pi-chevron-down',
-                                    command: () => toggleDetail(slotProps.data)
-                                },
-                                {
-                                    label: '复制ID',
-                                    icon: 'pi pi-copy',
-                                    command: () => copyCommentId(slotProps.data)
                                 }
                             ]" @click="openStatusDialog(slotProps.data)" />
                         </template>
@@ -477,7 +467,7 @@ function copyCommentId(comment: CommentSummary) {
                                         <NDescriptionsItem label="用户 ID">{{ getCommentDetail(slotProps.data.id)!.userId
                                             ?? '-' }}</NDescriptionsItem>
                                         <NDescriptionsItem label="实体">{{ getCommentDetail(slotProps.data.id)!.entityType
-                                        }} #{{
+                                            }} #{{
                                                 getCommentDetail(slotProps.data.id)!.entityId }}</NDescriptionsItem>
                                         <NDescriptionsItem label="可见性">{{
                                             getVisibilityLabel(getCommentDetail(slotProps.data.id)!.visibility) }}

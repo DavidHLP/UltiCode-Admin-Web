@@ -293,22 +293,9 @@ function copyWord(word: SensitiveWordView) {
                     <Column field="updatedAt" header="更新时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <SplitButton label="编辑" icon="pi pi-pencil" size="small" severity="info" :model="[
-                                {
-                                    label: '删除',
-                                    icon: 'pi pi-trash',
-                                    command: () => removeWord(slotProps.data)
-                                },
-                                {
-                                    label: slotProps.data.active ? '停用' : '启用',
-                                    icon: slotProps.data.active ? 'pi pi-ban' : 'pi pi-check',
-                                    command: () => toggleWordActive(slotProps.data)
-                                },
-                                {
-                                    label: '复制词语',
-                                    icon: 'pi pi-copy',
-                                    command: () => copyWord(slotProps.data)
-                                }
+                            <SplitButton label="编辑" icon="pi pi-pencil" size="small" :model="[
+                                { label: '删除', icon: 'pi pi-trash', command: () => removeWord(slotProps.data) },
+                                { label: slotProps.data.active ? '停用' : '启用', icon: slotProps.data.active ? 'pi pi-ban' : 'pi pi-check', command: () => toggleWordActive(slotProps.data) }
                             ]" @click="openEdit(slotProps.data)" />
                         </template>
                     </Column>

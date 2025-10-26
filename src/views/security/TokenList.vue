@@ -193,8 +193,8 @@ function tokenStatusLabel(item: AuthTokenView) {
                     </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <Button label="撤销" icon="pi pi-ban" severity="danger" text :disabled="data.revoked"
-                                @click="revoke(data)" />
+                            <SplitButton label="撤销" icon="pi pi-ban" severity="danger" size="small" :model="[]"
+                                :disabled="data.revoked" @click="revoke(data)" />
                         </template>
                     </Column>
                     <template #empty>

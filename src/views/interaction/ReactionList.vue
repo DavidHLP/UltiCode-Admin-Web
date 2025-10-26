@@ -246,16 +246,11 @@ function getRiskSeverity(risk: string | null | undefined): TagSeverity {
                     <Column field="createdAt" header="创建时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <SplitButton label="删除" icon="pi pi-trash" severity="danger" size="small" :model="[
+                            <SplitButton label="删除" icon="pi pi-trash" size="small" :model="[
                                 {
-                                    label: '查看详情',
-                                    icon: 'pi pi-eye',
-                                    command: () => viewReactionDetail(slotProps.data)
-                                },
-                                {
-                                    label: '复制信息',
-                                    icon: 'pi pi-copy',
-                                    command: () => copyReactionInfo(slotProps.data)
+                                    label: '无更多操作',
+                                    command: () => {
+                                    }
                                 }
                             ]" @click="removeReaction(slotProps.data)" />
                         </template>

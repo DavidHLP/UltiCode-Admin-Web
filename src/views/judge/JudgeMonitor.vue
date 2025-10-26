@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import {
-    fetchJudgeNodes,
-    fetchJudgeJobs,
     fetchJudgeJobDetail,
+    fetchJudgeJobs,
+    fetchJudgeNodes,
     retryJudgeJob,
-    type JudgeNodeView,
-    type JudgeJobView,
     type JudgeJobDetailView,
-    type JudgeJobQuery
+    type JudgeJobQuery,
+    type JudgeJobView,
+    type JudgeNodeView
 } from '@/api/judge';
 import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
 import { useAuthStore } from '@/stores/auth';
 import Tag from 'primevue/tag';
-import { onMounted, ref, computed } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import { computed, onMounted, ref } from 'vue';
 
 const toast = useToast();
 const authStore = useAuthStore();
@@ -396,8 +396,7 @@ const selectedArtifactKind = (artifactKind: string) => {
                         <Dropdown v-model="jobNodeFilter" :options="jobNodeOptions" optionLabel="label"
                             optionValue="value" placeholder="所属节点" class="w-full" />
                         <InputText v-model="submissionIdFilter" placeholder="按提交 ID" />
-                        <InputText v-model="jobKeyword" placeholder="按用户或题目关键字"
-                            @keyup.enter="onSearchJobs" />
+                        <InputText v-model="jobKeyword" placeholder="按用户或题目关键字" @keyup.enter="onSearchJobs" />
                     </div>
                     <div class="flex gap-2 flex-wrap justify-end w-full md:w-auto">
                         <Button label="查询" icon="pi pi-search" @click="onSearchJobs" />
@@ -406,8 +405,8 @@ const selectedArtifactKind = (artifactKind: string) => {
                 </div>
 
                 <DataTable :value="jobs" dataKey="id" :loading="jobLoading" responsiveLayout="scroll" :rows="jobSize"
-                    :paginator="true" :totalRecords="jobTotal" :rowsPerPageOptions="[10, 20, 50]" :first="(jobPage - 1) * jobSize"
-                    @page="onJobPage">
+                    :paginator="true" :totalRecords="jobTotal" :rowsPerPageOptions="[10, 20, 50]"
+                    :first="(jobPage - 1) * jobSize" @page="onJobPage">
                     <Column field="id" header="任务 ID" style="min-width: 6rem" />
                     <Column field="submissionId" header="提交 ID" style="min-width: 6rem" />
                     <Column header="状态" style="min-width: 8rem">
@@ -453,12 +452,14 @@ const selectedArtifactKind = (artifactKind: string) => {
                     </Column>
                     <Column header="操作" style="min-width: 12rem">
                         <template #body="{ data }">
-                            <div class="flex gap-2 flex-wrap">
-                                <Button label="详情" icon="pi pi-search" size="small" text
-                                    @click="openJobDetail(data)" />
-                                <Button label="重试" icon="pi pi-refresh" size="small" severity="danger" text
-                                    :disabled="!canRetry(data)" @click="retryJob(data)" />
-                            </div>
+                            <SplitButton label="详情" icon="pi pi-search" size="small" :model="[
+                                {
+                                    label: '重试任务',
+                                    icon: 'pi pi-refresh',
+                                    command: () => retryJob(data),
+                                    disabled: !canRetry(data)
+                                }
+                            ]" @click="openJobDetail(data)" />
                         </template>
                     </Column>
                     <template #empty>
@@ -512,8 +513,7 @@ const selectedArtifactKind = (artifactKind: string) => {
 
             <div class="detail-section">
                 <h5>测试结果</h5>
-                <DataTable :value="jobDetail.tests" dataKey="id" :rows="5" :paginator="true"
-                    responsiveLayout="scroll">
+                <DataTable :value="jobDetail.tests" dataKey="id" :rows="5" :paginator="true" responsiveLayout="scroll">
                     <Column field="testcaseId" header="用例 ID" style="min-width: 6rem" />
                     <Column field="groupName" header="测试组" style="min-width: 8rem">
                         <template #body="{ data }">
@@ -541,8 +541,7 @@ const selectedArtifactKind = (artifactKind: string) => {
 
             <div class="detail-section">
                 <h5>日志与附件</h5>
-                <div v-if="jobDetail.artifacts.length === 0"
-                    class="text-sm text-surface-500 dark:text-surface-300">
+                <div v-if="jobDetail.artifacts.length === 0" class="text-sm text-surface-500 dark:text-surface-300">
                     暂无附件
                 </div>
                 <div v-else class="artifact-list">
@@ -601,7 +600,7 @@ const selectedArtifactKind = (artifactKind: string) => {
     color: var(--text-color-secondary);
 }
 
-.runtime-item+ .runtime-item {
+.runtime-item+.runtime-item {
     margin-top: 0.25rem;
 }
 

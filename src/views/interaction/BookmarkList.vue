@@ -238,13 +238,10 @@ function getRiskSeverity(risk: string | null | undefined): TagSeverity {
                     <Column field="createdAt" header="创建时间" sortable />
                     <Column header="操作">
                         <template #body="slotProps">
-                            <SplitButton label="删除" icon="pi pi-trash" severity="danger" size="small" :model="[
+                            <SplitButton label="删除" icon="pi pi-trash" size="small" :model="[
                                 {
-                                    label: '查看详情',
-                                    icon: 'pi pi-eye',
+                                    label: '无更多操作',
                                     command: () => {
-                                        const key = getRowKey(slotProps.data);
-                                        expandedRows[key] = !expandedRows[key];
                                     }
                                 }
                             ]" @click="promptDelete(slotProps.data)" />
@@ -268,9 +265,6 @@ function getRiskSeverity(risk: string | null | undefined): TagSeverity {
                                         <NDescriptionsItem label="创建时间">{{ slotProps.data.createdAt }}
                                         </NDescriptionsItem>
                                     </NDescriptions>
-                                </AccordionTab>
-
-                                <AccordionTab header="标签与备注">
                                     <NDescriptions bordered :column="1" label-placement="left" size="small">
                                         <NDescriptionsItem label="标签">
                                             <div class="flex gap-1 flex-wrap">
@@ -283,8 +277,6 @@ function getRiskSeverity(risk: string | null | undefined): TagSeverity {
                                             <div class="whitespace-pre-wrap">{{ slotProps.data.note ?? '-' }}</div>
                                         </NDescriptionsItem>
                                     </NDescriptions>
-                                </AccordionTab>
-                                <AccordionTab header="敏感信息">
                                     <NDescriptions bordered :column="1" label-placement="left" size="small">
                                         <NDescriptionsItem label="敏感标记">
                                             <Tag :value="getSensitiveLabel(slotProps.data.sensitiveFlag)"
