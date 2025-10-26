@@ -9,20 +9,11 @@ import {
     type JudgeJobView,
     type JudgeNodeView
 } from '@/api/judge';
-import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
-import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 // ---------- 基础 ----------
 const toast = useToast();
-const authStore = useAuthStore();
-const sensitiveDialogRef = ref<SensitiveActionDialogExpose | null>(null);
-
-async function requestSensitiveToken() {
-    if (!sensitiveDialogRef.value) return null;
-    return sensitiveDialogRef.value.requestToken();
-}
 
 // ---------- 公共工具 ----------
 function formatDate(value?: string | null) {
@@ -142,7 +133,7 @@ function setupNodeAutoRefresh() {
         nodeTimer = null;
     }
     if (nodeAutoRefresh.value) {
-        // @ts-expect-error setInterval typing
+
         nodeTimer = window.setInterval(refreshNodes, nodeRefreshMs.value);
     }
 }
@@ -152,7 +143,7 @@ watch([() => nodeAutoRefresh.value, () => nodeRefreshMs.value], setupNodeAutoRef
 let nodeDebounce: number | null = null;
 watch(() => nodeFilters.keyword, () => {
     if (nodeDebounce) window.clearTimeout(nodeDebounce);
-    // @ts-expect-error setTimeout typing
+
     nodeDebounce = window.setTimeout(refreshNodes, 400);
 });
 
@@ -238,7 +229,7 @@ function clearJobFilters() {
 let jobDebounce: number | null = null;
 watch(() => jobFilters.keyword, () => {
     if (jobDebounce) window.clearTimeout(jobDebounce);
-    // @ts-expect-error
+
     jobDebounce = window.setTimeout(() => { jobPage.value = 1; loadJobs(1); }, 400);
 });
 
@@ -250,18 +241,14 @@ async function retryJob(job: JudgeJobView) {
     if (!canRetry(job)) return;
     const confirmed = window.confirm(`确定要重新调度任务 #${job.id} 吗？`);
     if (!confirmed) return;
-    const sensitiveToken = await requestSensitiveToken();
-    if (!sensitiveToken) return;
 
     try {
-        await retryJudgeJob(job.id, sensitiveToken);
+        await retryJudgeJob(job.id);
         toast.add({ severity: 'success', summary: '操作成功', detail: '任务已重新排队', life: 3000 });
         await loadJobs();
         await refreshNodes();
     } catch (error) {
         toast.add({ severity: 'error', summary: '操作失败', detail: (error as Error)?.message ?? '重试任务失败', life: 4000 });
-    } finally {
-        authStore.clearSensitiveToken();
     }
 }
 
@@ -271,7 +258,6 @@ function setupJobAutoRefresh() {
         jobTimer = null;
     }
     if (jobAutoRefresh.value) {
-        // @ts-expect-error
         jobTimer = window.setInterval(() => loadJobs(jobPage.value), jobRefreshMs.value);
     }
 }
@@ -288,12 +274,9 @@ async function retrySelected() {
     const confirmed = window.confirm(`确定批量重试 ${candidates.length} 个任务吗？`);
     if (!confirmed) return;
 
-    const sensitiveToken = await requestSensitiveToken();
-    if (!sensitiveToken) return;
-
     try {
         for (const job of candidates) {
-            await retryJudgeJob(job.id, sensitiveToken);
+            await retryJudgeJob(job.id);
         }
         toast.add({ severity: 'success', summary: '批量重试完成', detail: '选中任务已重新排队', life: 3000 });
         selectedJobs.value = [];
@@ -301,8 +284,6 @@ async function retrySelected() {
         await refreshNodes();
     } catch (error) {
         toast.add({ severity: 'error', summary: '批量操作失败', detail: (error as Error)?.message ?? '请尝试逐个重试', life: 4000 });
-    } finally {
-        authStore.clearSensitiveToken();
     }
 }
 
@@ -341,7 +322,7 @@ onBeforeUnmount(() => {
     <div class="p-4 space-y-4">
         <TabView>
             <!-- 节点 -->
-            <TabPanel header="节点">
+            <TabPanel header="节点" value="">
                 <Toolbar class="rounded-2xl shadow-sm">
                     <template #start>
                         <div class="grid gap-3 grid-cols-1 md:grid-cols-3 w-full md:w-auto">
@@ -384,22 +365,22 @@ onBeforeUnmount(() => {
                                         <div>
                                             <span class="block text-xs text-muted-color">排队</span>
                                             <span class="text-lg font-semibold">{{ node.metrics?.queuedJobs ?? 0
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <div>
                                             <span class="block text-xs text-muted-color">运行</span>
                                             <span class="text-lg font-semibold">{{ node.metrics?.runningJobs ?? 0
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <div>
                                             <span class="block text-xs text-red-500">失败</span>
                                             <span class="text-lg font-semibold">{{ node.metrics?.failedJobs ?? 0
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                         <div>
                                             <span class="block text-xs text-muted-color">1h 完成</span>
                                             <span class="text-lg font-semibold">{{ node.metrics?.finishedLastHour ?? 0
-                                            }}</span>
+                                                }}</span>
                                         </div>
                                     </div>
 
@@ -420,7 +401,7 @@ onBeforeUnmount(() => {
             </TabPanel>
 
             <!-- 任务 -->
-            <TabPanel header="任务">
+            <TabPanel header="任务" value="">
                 <Fieldset legend="筛选与控制" toggleable class="rounded-2xl">
                     <div class="flex flex-wrap items-end justify-between gap-3">
                         <div class="grid gap-3 grid-cols-1 md:grid-cols-3 lg:grid-cols-4 w-full">
@@ -576,7 +557,7 @@ onBeforeUnmount(() => {
                         <div><span class="text-muted-color mr-2">耗时：</span>{{ jobDetail.job.submission.timeMs ?? '-' }}
                             ms</div>
                         <div><span class="text-muted-color mr-2">内存：</span>{{ jobDetail.job.submission.memoryKb ?? '-'
-                        }} KB</div>
+                            }} KB</div>
                     </div>
                     <div v-else class="text-muted-color text-sm">缺少提交信息</div>
                 </Panel>
@@ -631,8 +612,6 @@ onBeforeUnmount(() => {
                 </Panel>
             </template>
         </Sidebar>
-
-        <SensitiveActionDialog ref="sensitiveDialogRef" />
     </div>
 </template>
 

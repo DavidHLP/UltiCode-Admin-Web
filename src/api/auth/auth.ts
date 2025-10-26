@@ -68,6 +68,7 @@ export interface SsoSessionResponse {
 }
 
 export const BASE_URL = '/api/auth';
+export const SENSITIVE_ACTION_HEADER = 'X-Sensitive-Action-Token';
 
 function withCaptchaToken<T extends { captchaToken?: string }>(payload: T): T {
     if (!payload.captchaToken) {

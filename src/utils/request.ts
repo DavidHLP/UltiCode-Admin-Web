@@ -1,5 +1,10 @@
 import router from '@/router/index';
 import { useAuthStore } from '@/stores/auth';
+import {
+    ensureSensitiveActionToken,
+    SensitiveActionCancelledError,
+    type SensitiveActionContext
+} from '@/utils/sensitive-action-guard';
 import axios, {
     AxiosHeaders,
     type AxiosError,
@@ -26,6 +31,8 @@ export interface ApiResponse<T = unknown> {
 
 export interface RequestConfig extends AxiosRequestConfig {
     sensitiveToken?: string;
+    requireSensitiveVerification?: boolean;
+    skipSensitiveVerification?: boolean;
 }
 
 const API_BASE_URL =
@@ -37,6 +44,8 @@ const REFRESH_FAILURE_MESSAGE = '登录状态已过期，请重新登录';
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
     _retry?: boolean;
     sensitiveToken?: string;
+    requireSensitiveVerification?: boolean;
+    skipSensitiveVerification?: boolean;
 }
 
 let refreshPromise: Promise<void> | null = null;
@@ -105,6 +114,48 @@ const service: AxiosInstance = axios.create({
 
 service.defaults.withCredentials = true;
 
+const SENSITIVE_METHODS = new Set(['post', 'put', 'delete', 'patch']);
+const SENSITIVE_PATH_PATTERNS = [/^\/api\/admin\//i, /^\/api\/judge\//i];
+
+function normalizePath(url?: string | null): string {
+    if (!url) {
+        return '';
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        try {
+            return new URL(url).pathname;
+        } catch {
+            return url;
+        }
+    }
+    if (url.startsWith(API_BASE_URL)) {
+        return url.slice(API_BASE_URL.length);
+    }
+    return url;
+}
+
+function matchesSensitivePath(url?: string | null): boolean {
+    const path = normalizePath(url);
+    if (!path) {
+        return false;
+    }
+    return SENSITIVE_PATH_PATTERNS.some((pattern) => pattern.test(path));
+}
+
+function shouldTriggerSensitiveGuard(config: RetryableRequestConfig): boolean {
+    if (config.skipSensitiveVerification) {
+        return false;
+    }
+    if (config.requireSensitiveVerification) {
+        return true;
+    }
+    const method = (config.method ?? 'get').toLowerCase();
+    if (!SENSITIVE_METHODS.has(method)) {
+        return false;
+    }
+    return matchesSensitivePath(config.url);
+}
+
 service.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
         const authStore = useAuthStore();
@@ -121,6 +172,20 @@ service.interceptors.request.use(
         const authorization = authStore.authorizationHeader;
         ensureAuthorizationHeader(config, authorization);
         const retryableConfig = config as RetryableRequestConfig;
+        if (!retryableConfig.sensitiveToken && shouldTriggerSensitiveGuard(retryableConfig)) {
+            try {
+                const context: SensitiveActionContext = {
+                    method: config.method?.toUpperCase(),
+                    url: normalizePath(config.url)
+                };
+                retryableConfig.sensitiveToken = await ensureSensitiveActionToken(context);
+            } catch (error) {
+                if (error instanceof SensitiveActionCancelledError) {
+                    return Promise.reject(error);
+                }
+                throw error;
+            }
+        }
         if (retryableConfig.sensitiveToken) {
             const headers =
                     config.headers instanceof AxiosHeaders

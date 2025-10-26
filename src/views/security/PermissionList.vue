@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { createPermission, deletePermission, fetchPermissions, updatePermission, type PermissionCreatePayload, type PermissionUpdatePayload, type PermissionView } from '@/api/admin/permissions';
-import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
-import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
@@ -14,15 +12,6 @@ const editingId = ref<number | null>(null);
 const form = ref<PermissionCreatePayload>({ code: '', name: '' });
 
 const toast = useToast();
-const authStore = useAuthStore();
-const sensitiveDialogRef = ref<SensitiveActionDialogExpose | null>(null);
-
-async function requestSensitiveToken() {
-    if (!sensitiveDialogRef.value) {
-        return null;
-    }
-    return sensitiveDialogRef.value.requestToken();
-}
 
 onMounted(() => {
     loadPermissions();
@@ -72,19 +61,15 @@ async function submitForm() {
         toast.add({ severity: 'warn', summary: '校验失败', detail: '请输入权限名称', life: 4000 });
         return;
     }
-    const sensitiveToken = await requestSensitiveToken();
-    if (!sensitiveToken) {
-        return;
-    }
     saving.value = true;
     try {
         if (editingId.value === null) {
             const payload: PermissionCreatePayload = { code, name };
-            await createPermission(payload, sensitiveToken);
+            await createPermission(payload);
             toast.add({ severity: 'success', summary: '创建成功', detail: '权限已创建', life: 3000 });
         } else {
             const payload: PermissionUpdatePayload = { code, name };
-            await updatePermission(editingId.value, payload, sensitiveToken);
+            await updatePermission(editingId.value, payload);
             toast.add({ severity: 'success', summary: '更新成功', detail: '权限已更新', life: 3000 });
         }
         dialogVisible.value = false;
@@ -98,7 +83,6 @@ async function submitForm() {
         });
     } finally {
         saving.value = false;
-        authStore.clearSensitiveToken();
     }
 }
 
@@ -107,12 +91,8 @@ async function removePermission(item: PermissionView) {
     if (!confirmed) {
         return;
     }
-    const sensitiveToken = await requestSensitiveToken();
-    if (!sensitiveToken) {
-        return;
-    }
     try {
-        await deletePermission(item.id, sensitiveToken);
+        await deletePermission(item.id);
         toast.add({ severity: 'success', summary: '删除成功', detail: '权限已删除', life: 3000 });
         await loadPermissions();
     } catch (error) {
@@ -123,7 +103,7 @@ async function removePermission(item: PermissionView) {
             life: 4000
         });
     } finally {
-        authStore.clearSensitiveToken();
+        /* noop */
     }
 }
 
@@ -218,8 +198,6 @@ function formatDate(value?: string | null) {
             </div>
         </form>
     </Dialog>
-
-    <SensitiveActionDialog ref="sensitiveDialogRef" />
 </template>
 
 <style scoped>

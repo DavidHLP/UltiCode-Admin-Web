@@ -30,32 +30,25 @@ export function fetchPermissions(params?: PermissionQuery, signal?: AbortSignal)
     });
 }
 
-export function createPermission(payload: PermissionCreatePayload, sensitiveToken: string) {
+export function createPermission(payload: PermissionCreatePayload) {
     return requestData<PermissionView>({
         url: '/api/admin/permissions',
         method: 'post',
-        data: payload,
-        sensitiveToken
+        data: payload
     });
 }
 
-export function updatePermission(
-    permissionId: number,
-    payload: PermissionUpdatePayload,
-    sensitiveToken: string
-) {
+export function updatePermission(permissionId: number, payload: PermissionUpdatePayload) {
     return requestData<PermissionView>({
         url: `/api/admin/permissions/${permissionId}`,
         method: 'put',
-        data: payload,
-        sensitiveToken
+        data: payload
     });
 }
 
-export function deletePermission(permissionId: number, sensitiveToken: string) {
+export function deletePermission(permissionId: number) {
     return requestData<void>({
         url: `/api/admin/permissions/${permissionId}`,
-        method: 'delete',
-        sensitiveToken
+        method: 'delete'
     });
 }

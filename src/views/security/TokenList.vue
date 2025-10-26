@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { fetchAuthTokens, revokeAuthToken, type AuthTokenView } from '@/api/admin/auth-tokens';
-import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
-import { useAuthStore } from '@/stores/auth';
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
@@ -26,15 +24,6 @@ const revokedOptions = [
 ];
 
 const toast = useToast();
-const authStore = useAuthStore();
-const sensitiveDialogRef = ref<SensitiveActionDialogExpose | null>(null);
-
-async function requestSensitiveToken() {
-    if (!sensitiveDialogRef.value) {
-        return null;
-    }
-    return sensitiveDialogRef.value.requestToken();
-}
 
 onMounted(() => {
     loadTokens();
@@ -79,12 +68,8 @@ async function revoke(token: AuthTokenView) {
     if (!confirmed) {
         return;
     }
-    const sensitiveToken = await requestSensitiveToken();
-    if (!sensitiveToken) {
-        return;
-    }
     try {
-        await revokeAuthToken(token.id, sensitiveToken);
+        await revokeAuthToken(token.id);
         toast.add({ severity: 'success', summary: '撤销成功', detail: '令牌已撤销', life: 3000 });
         await loadTokens();
     } catch (error) {
@@ -95,7 +80,7 @@ async function revoke(token: AuthTokenView) {
             life: 4000
         });
     } finally {
-        authStore.clearSensitiveToken();
+        /* noop */
     }
 }
 
@@ -212,6 +197,4 @@ function tokenStatusLabel(item: AuthTokenView) {
             </div>
         </div>
     </div>
-
-    <SensitiveActionDialog ref="sensitiveDialogRef" />
 </template>

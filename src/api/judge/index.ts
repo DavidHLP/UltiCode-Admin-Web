@@ -141,10 +141,9 @@ export function fetchJudgeJobDetail(jobId: number) {
     });
 }
 
-export function retryJudgeJob(jobId: number, sensitiveToken: string) {
+export function retryJudgeJob(jobId: number) {
     return requestData<void>({
         url: `/api/judge/jobs/${jobId}/retry`,
-        method: 'post',
-        sensitiveToken
+        method: 'post'
     });
 }

@@ -2,8 +2,6 @@
 import { fetchRoleOptions, type RoleDto } from '@/api/admin/role';
 import type { UserView } from '@/api/admin/users';
 import { createUser, fetchUsers, updateUser, type UserCreatePayload, type UserUpdatePayload } from '@/api/admin/users';
-import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
-import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -30,15 +28,6 @@ const saving = ref(false);
 const roles = ref<RoleDto[]>([]);
 const editingId = ref<number | null>(null);
 const toast = useToast();
-const authStore = useAuthStore();
-const sensitiveDialogRef = ref<SensitiveActionDialogExpose | null>(null);
-
-async function requestSensitiveToken() {
-    if (!sensitiveDialogRef.value) {
-        return null;
-    }
-    return sensitiveDialogRef.value.requestToken();
-}
 
 // 请求控制
 let abortController: AbortController | null = null;
@@ -229,10 +218,6 @@ async function submitForm() {
         return;
     }
 
-    const sensitiveToken = await acquireSensitiveToken();
-    if (!sensitiveToken) {
-        return;
-    }
     saving.value = true;
     try {
         if (isCreate) {
@@ -245,7 +230,7 @@ async function submitForm() {
                 status: form.value.status,
                 roleIds: form.value.roleIds
             };
-            await createUser(payload, sensitiveToken);
+            await createUser(payload);
             toast.add({ severity: 'success', summary: '创建成功', detail: '用户已创建', life: 3000 });
         } else {
             const payload: UserUpdatePayload = {
@@ -259,7 +244,7 @@ async function submitForm() {
             if (form.value.password.trim()) {
                 payload.password = form.value.password.trim();
             }
-            await updateUser(editingId.value!, payload, sensitiveToken);
+            await updateUser(editingId.value!, payload);
             toast.add({ severity: 'success', summary: '更新成功', detail: '用户信息已更新', life: 3000 });
         }
         dialogVisible.value = false;
@@ -273,12 +258,7 @@ async function submitForm() {
         });
     } finally {
         saving.value = false;
-        authStore.clearSensitiveToken();
     }
-}
-
-async function acquireSensitiveToken(): Promise<string | null> {
-    return await requestSensitiveToken();
 }
 
 function onPageChange(event: { page: number; rows: number }) {
@@ -445,8 +425,6 @@ function formatDate(value?: string | null) {
             </div>
         </form>
     </Dialog>
-
-    <SensitiveActionDialog ref="sensitiveDialogRef" />
 </template>
 
 <style scoped>

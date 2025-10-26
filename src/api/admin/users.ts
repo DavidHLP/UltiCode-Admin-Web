@@ -62,20 +62,18 @@ export function fetchUser(userId: number) {
     });
 }
 
-export function createUser(payload: UserCreatePayload, sensitiveToken: string) {
+export function createUser(payload: UserCreatePayload) {
     return requestData<UserView>({
         url: '/api/admin/users',
         method: 'post',
-        data: payload,
-        sensitiveToken
+        data: payload
     });
 }
 
-export function updateUser(userId: number, payload: UserUpdatePayload, sensitiveToken: string) {
+export function updateUser(userId: number, payload: UserUpdatePayload) {
     return requestData<UserView>({
         url: `/api/admin/users/${userId}`,
         method: 'put',
-        data: payload,
-        sensitiveToken
+        data: payload
     });
 }

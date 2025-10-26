@@ -24,10 +24,9 @@ export function fetchAuthTokens(params?: AuthTokenQuery, signal?: AbortSignal) {
     });
 }
 
-export function revokeAuthToken(tokenId: number, sensitiveToken: string) {
+export function revokeAuthToken(tokenId: number) {
     return requestData<void>({
         url: `/api/admin/auth-tokens/${tokenId}`,
-        method: 'delete',
-        sensitiveToken
+        method: 'delete'
     });
 }

@@ -53,29 +53,26 @@ export function fetchRole(roleId: number) {
     });
 }
 
-export function createRole(payload: RoleCreatePayload, sensitiveToken: string) {
+export function createRole(payload: RoleCreatePayload) {
     return requestData<RoleView>({
         url: '/api/admin/roles',
         method: 'post',
-        data: payload,
-        sensitiveToken
+        data: payload
     });
 }
 
-export function updateRole(roleId: number, payload: RoleUpdatePayload, sensitiveToken: string) {
+export function updateRole(roleId: number, payload: RoleUpdatePayload) {
     return requestData<RoleView>({
         url: `/api/admin/roles/${roleId}`,
         method: 'put',
-        data: payload,
-        sensitiveToken
+        data: payload
     });
 }
 
-export function deleteRole(roleId: number, sensitiveToken: string) {
+export function deleteRole(roleId: number) {
     return requestData<void>({
         url: `/api/admin/roles/${roleId}`,
-        method: 'delete',
-        sensitiveToken
+        method: 'delete'
     });
 }
 

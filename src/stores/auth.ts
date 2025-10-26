@@ -23,7 +23,6 @@ interface AuthState {
     refreshTokenExpiresAt: number | null;
     user: UserProfile | null;
     twoFactorSetup: TwoFactorSetupResponse | null;
-    sensitiveToken: string | null;
 }
 
 interface StoredAuthState {
@@ -98,7 +97,6 @@ export const useAuthStore = defineStore('auth', {
             refreshTokenExpiresAt: persisted.refreshTokenExpiresAt ?? null,
             user: persisted.user ?? null,
             twoFactorSetup: null,
-            sensitiveToken: null
         };
     },
     getters: {
@@ -146,7 +144,6 @@ export const useAuthStore = defineStore('auth', {
             this.refreshTokenExpiresAt = null;
             this.user = null;
             this.twoFactorSetup = null;
-            this.sensitiveToken = null;
             persistState(null);
         },
         persist() {
@@ -208,11 +205,7 @@ export const useAuthStore = defineStore('auth', {
         },
         async obtainSensitiveToken(verificationCode: string) {
             const token = await issueSensitiveActionToken(verificationCode);
-            this.sensitiveToken = token;
             return token;
-        },
-        clearSensitiveToken() {
-            this.sensitiveToken = null;
         }
     }
 });

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { createRole, deleteRole, fetchRoleList, fetchRolePermissionOptions, updateRole, type PermissionDto, type RoleCreatePayload, type RoleUpdatePayload, type RoleView } from '@/api/admin/role';
-import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
-import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 
@@ -20,15 +18,6 @@ const dialogVisible = ref(false);
 const saving = ref(false);
 const editingId = ref<number | null>(null);
 const toast = useToast();
-const authStore = useAuthStore();
-const sensitiveDialogRef = ref<SensitiveActionDialogExpose | null>(null);
-
-async function requestSensitiveToken() {
-    if (!sensitiveDialogRef.value) {
-        return null;
-    }
-    return sensitiveDialogRef.value.requestToken();
-}
 
 const form = ref<RoleForm>({
     code: '',
@@ -133,19 +122,15 @@ async function submitForm() {
     const remark = remarkRaw === undefined || remarkRaw === '' ? null : remarkRaw;
     const permissionIds = form.value.permissionIds && form.value.permissionIds.length > 0 ? Array.from(new Set(form.value.permissionIds)) : [];
 
-    const sensitiveToken = await acquireSensitiveToken();
-    if (!sensitiveToken) {
-        return;
-    }
     saving.value = true;
     try {
         if (editingId.value === null) {
             const payload: RoleCreatePayload = { code, name, remark, permissionIds };
-            await createRole(payload, sensitiveToken);
+            await createRole(payload);
             toast.add({ severity: 'success', summary: '创建成功', detail: '角色已创建', life: 3000 });
         } else {
             const payload: RoleUpdatePayload = { code, name, remark, permissionIds };
-            await updateRole(editingId.value, payload, sensitiveToken);
+            await updateRole(editingId.value, payload);
             toast.add({ severity: 'success', summary: '更新成功', detail: '角色信息已更新', life: 3000 });
         }
         dialogVisible.value = false;
@@ -159,7 +144,6 @@ async function submitForm() {
         });
     } finally {
         saving.value = false;
-        authStore.clearSensitiveToken();
     }
 }
 
@@ -168,12 +152,8 @@ async function removeRole(role: RoleView) {
     if (!confirmed) {
         return;
     }
-    const sensitiveToken = await acquireSensitiveToken();
-    if (!sensitiveToken) {
-        return;
-    }
     try {
-        await deleteRole(role.id, sensitiveToken);
+        await deleteRole(role.id);
         toast.add({ severity: 'success', summary: '删除成功', detail: '角色已删除', life: 3000 });
         await loadRoles();
     } catch (error) {
@@ -184,7 +164,7 @@ async function removeRole(role: RoleView) {
             life: 4000
         });
     } finally {
-        authStore.clearSensitiveToken();
+        /* noop */
     }
 }
 
@@ -205,9 +185,6 @@ function formatDate(value?: string | null) {
     }).format(date);
 }
 
-async function acquireSensitiveToken(): Promise<string | null> {
-    return await requestSensitiveToken();
-}
 </script>
 
 <template>
@@ -314,8 +291,6 @@ async function acquireSensitiveToken(): Promise<string | null> {
             </div>
         </form>
     </Dialog>
-
-    <SensitiveActionDialog ref="sensitiveDialogRef" />
 </template>
 
 <style scoped>
