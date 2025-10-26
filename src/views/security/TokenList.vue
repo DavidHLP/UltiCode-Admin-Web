@@ -157,10 +157,8 @@ function tokenStatusLabel(item: AuthTokenView) {
                         <span class="p-input-icon-left">
                             <InputText v-model="userIdFilter" placeholder="按用户ID过滤" />
                         </span>
-                        <Dropdown v-model="kindFilter" :options="kindOptions" optionLabel="label" optionValue="value"
-                            placeholder="按类型过滤" class="w-full" />
-                        <Dropdown v-model="revokedFilter" :options="revokedOptions" optionLabel="label"
-                            optionValue="value" class="w-full" />
+                        <Dropdown v-model="kindFilter" :options="kindOptions" optionLabel="label" optionValue="value" placeholder="按类型过滤" class="w-full" />
+                        <Dropdown v-model="revokedFilter" :options="revokedOptions" optionLabel="label" optionValue="value" class="w-full" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="查询" icon="pi pi-search" @click="onSearch" />
@@ -173,7 +171,7 @@ function tokenStatusLabel(item: AuthTokenView) {
                     <Column field="userId" header="用户ID" style="min-width: 8rem" />
                     <Column field="kind" header="类型" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <Tag :value="data.kind" severity="info" />
+                            <Tag :value="data.kind" />
                         </template>
                     </Column>
                     <Column header="状态" style="min-width: 8rem">
@@ -193,8 +191,18 @@ function tokenStatusLabel(item: AuthTokenView) {
                     </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <SplitButton label="撤销" icon="pi pi-ban" severity="danger" size="small" :model="[]"
-                                :disabled="data.revoked" @click="revoke(data)" />
+                            <SplitButton
+                                label="撤销"
+                                icon="pi pi-ban"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '无更多操作'
+                                    }
+                                ]"
+                                :disabled="data.revoked"
+                                @click="revoke(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>

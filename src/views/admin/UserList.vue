@@ -320,13 +320,10 @@ function formatDate(value?: string | null) {
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
                         <span class="p-input-icon-left">
-                            <InputText v-model="keyword" placeholder="搜索用户名或邮箱" @keyup.enter="onSearch"
-                                style="min-width: 18rem" />
+                            <InputText v-model="keyword" placeholder="搜索用户名或邮箱" @keyup.enter="onSearch" style="min-width: 18rem" />
                         </span>
-                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label"
-                            optionValue="value" placeholder="状态" :showClear="true" style="min-width: 10rem" />
-                        <Dropdown v-model="roleFilter" :options="roleOptions" optionLabel="label" optionValue="value"
-                            placeholder="角色" :showClear="true" style="min-width: 10rem" />
+                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="状态" :showClear="true" style="min-width: 10rem" />
+                        <Dropdown v-model="roleFilter" :options="roleOptions" optionLabel="label" optionValue="value" placeholder="角色" :showClear="true" style="min-width: 10rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -335,16 +332,25 @@ function formatDate(value?: string | null) {
                     </div>
                 </div>
 
-                <DataTable :value="users" dataKey="id" :loading="loading" :rows="size" :paginator="true" :lazy="true"
-                    :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]"
-                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`" @page="onPageChange"
-                    responsiveLayout="scroll">
+                <DataTable
+                    :value="users"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`"
+                    @page="onPageChange"
+                    responsiveLayout="scroll"
+                >
                     <Column field="username" header="用户名" style="min-width: 10rem" />
                     <Column field="email" header="邮箱" style="min-width: 14rem" />
                     <Column header="角色" style="min-width: 12rem">
                         <template #body="{ data }">
                             <div class="flex flex-wrap gap-2">
-                                <Tag v-for="role in data.roles" :key="role.id" severity="info" :value="role.name" />
+                                <Tag v-for="role in data.roles" :key="role.id" :value="role.name" />
                                 <span v-if="!data.roles?.length">-</span>
                             </div>
                         </template>
@@ -366,13 +372,19 @@ function formatDate(value?: string | null) {
                     </Column>
                     <Column header="操作" style="min-width: 8rem">
                         <template #body="{ data }">
-                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
-                                {
-                                    label: '新建用户',
-                                    icon: 'pi pi-plus',
-                                    command: () => openCreate()
-                                }
-                            ]" @click="openEdit(data)" />
+                            <SplitButton
+                                label="编辑"
+                                icon="pi pi-pencil"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '新建用户',
+                                        icon: 'pi pi-plus',
+                                        command: () => openCreate()
+                                    }
+                                ]"
+                                @click="openEdit(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>
@@ -383,8 +395,7 @@ function formatDate(value?: string | null) {
         </div>
     </div>
 
-    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建用户' : '编辑用户'"
-        :style="{ width: '32rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建用户' : '编辑用户'" :style="{ width: '32rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
         <form class="grid form-grid" @submit.prevent="submitForm">
             <div class="col-12 md:col-6">
                 <div class="field">
@@ -401,15 +412,13 @@ function formatDate(value?: string | null) {
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block" for="password">密码</label>
-                    <Password id="password" v-model="form.password" toggleMask :feedback="false"
-                        :placeholder="editingId === null ? '请输入初始密码' : '留空则不修改密码'" class="w-full" inputClass="w-full" />
+                    <Password id="password" v-model="form.password" toggleMask :feedback="false" :placeholder="editingId === null ? '请输入初始密码' : '留空则不修改密码'" class="w-full" inputClass="w-full" />
                 </div>
             </div>
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block" for="avatar">头像链接</label>
-                    <InputText id="avatar" v-model="form.avatarUrl" placeholder="https://example.com/avatar.png"
-                        class="w-full" />
+                    <InputText id="avatar" v-model="form.avatarUrl" placeholder="https://example.com/avatar.png" class="w-full" />
                 </div>
             </div>
             <div class="col-12">
@@ -421,15 +430,13 @@ function formatDate(value?: string | null) {
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block">状态</label>
-                    <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value"
-                        class="w-full" />
+                    <Dropdown v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full" />
                 </div>
             </div>
             <div class="col-12 md:col-6">
                 <div class="field">
                     <label class="font-medium text-sm mb-1 block">角色</label>
-                    <MultiSelect v-model="form.roleIds" :options="roleOptions" optionLabel="label" optionValue="value"
-                        display="chip" placeholder="选择角色" class="w-full" />
+                    <MultiSelect v-model="form.roleIds" :options="roleOptions" optionLabel="label" optionValue="value" display="chip" placeholder="选择角色" class="w-full" />
                 </div>
             </div>
             <div class="col-12 flex justify-end gap-2 mt-2">
@@ -451,5 +458,4 @@ function formatDate(value?: string | null) {
 .form-grid {
     gap: 1.5rem;
 }
-
 </style>

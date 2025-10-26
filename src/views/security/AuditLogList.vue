@@ -98,8 +98,7 @@ function formatDate(value?: string | null) {
                 <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
                     <div class="grid gap-3 grid-cols-1 md:grid-cols-2 w-full md:w-auto">
                         <InputText v-model="keyword" placeholder="搜索对象ID、描述或操作者" @keyup.enter="onSearch" />
-                        <Dropdown v-model="actionFilter" :options="actionOptions" optionLabel="label" optionValue="value"
-                            class="w-full" />
+                        <Dropdown v-model="actionFilter" :options="actionOptions" optionLabel="label" optionValue="value" class="w-full" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="查询" icon="pi pi-search" @click="onSearch" />
@@ -107,8 +106,7 @@ function formatDate(value?: string | null) {
                     </div>
                 </div>
 
-                <DataTable :value="logs" dataKey="id" :loading="loading" :paginator="true" :rows="size"
-                    :totalRecords="total" :first="(page - 1) * size" @page="onPage" responsiveLayout="scroll">
+                <DataTable :value="logs" dataKey="id" :loading="loading" :paginator="true" :rows="size" :totalRecords="total" :first="(page - 1) * size" @page="onPage" responsiveLayout="scroll">
                     <Column field="createdAt" header="时间" style="min-width: 12rem">
                         <template #body="{ data }">
                             {{ formatDate(data.createdAt) }}
@@ -116,18 +114,14 @@ function formatDate(value?: string | null) {
                     </Column>
                     <Column field="action" header="动作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <Tag :value="data.action" severity="info" />
+                            <Tag :value="data.action" />
                         </template>
                     </Column>
                     <Column field="actorUsername" header="操作者" style="min-width: 10rem">
-                        <template #body="{ data }">
-                            {{ data.actorUsername || '-' }} (ID: {{ data.actorId ?? '-' }})
-                        </template>
+                        <template #body="{ data }"> {{ data.actorUsername || '-' }} (ID: {{ data.actorId ?? '-' }}) </template>
                     </Column>
                     <Column field="objectType" header="对象" style="min-width: 12rem">
-                        <template #body="{ data }">
-                            {{ data.objectType }} / {{ data.objectId ?? '-' }}
-                        </template>
+                        <template #body="{ data }"> {{ data.objectType }} / {{ data.objectId ?? '-' }} </template>
                     </Column>
                     <Column field="description" header="描述" style="min-width: 16rem">
                         <template #body="{ data }">

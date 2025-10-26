@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-    createPermission,
-    deletePermission,
-    fetchPermissions,
-    updatePermission,
-    type PermissionCreatePayload,
-    type PermissionUpdatePayload,
-    type PermissionView
-} from '@/api/admin/permissions';
+import { createPermission, deletePermission, fetchPermissions, updatePermission, type PermissionCreatePayload, type PermissionUpdatePayload, type PermissionView } from '@/api/admin/permissions';
 import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';
@@ -160,7 +152,6 @@ function formatDate(value?: string | null) {
         minute: '2-digit'
     }).format(date);
 }
-
 </script>
 
 <template>
@@ -169,8 +160,7 @@ function formatDate(value?: string | null) {
             <div class="card">
                 <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索权限编码或名称" @keyup.enter="onSearch"
-                            style="min-width: 18rem" />
+                        <InputText v-model="keyword" placeholder="搜索权限编码或名称" @keyup.enter="onSearch" style="min-width: 18rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="查询" icon="pi pi-search" @click="onSearch" />
@@ -189,13 +179,19 @@ function formatDate(value?: string | null) {
                     </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
-                                {
-                                    label: '删除权限',
-                                    icon: 'pi pi-trash',
-                                    command: () => removePermission(data)
-                                }
-                            ]" @click="openEdit(data)" />
+                            <SplitButton
+                                label="编辑"
+                                icon="pi pi-pencil"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '删除权限',
+                                        icon: 'pi pi-trash',
+                                        command: () => removePermission(data)
+                                    }
+                                ]"
+                                @click="openEdit(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>
@@ -206,8 +202,7 @@ function formatDate(value?: string | null) {
         </div>
     </div>
 
-    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建权限' : '编辑权限'"
-        :style="{ width: '24rem' }" @hide="closeDialog">
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建权限' : '编辑权限'" :style="{ width: '24rem' }" @hide="closeDialog">
         <form class="flex flex-col gap-4" @submit.prevent="submitForm">
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="code">权限编码</label>

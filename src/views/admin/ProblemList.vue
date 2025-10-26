@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-    fetchProblemOptions,
-    fetchProblems,
-    type DictionaryOption,
-    type ProblemOptions,
-    type ProblemQuery,
-    type ProblemSummary
-} from '@/api/problem/problem';
+import { fetchProblemOptions, fetchProblems, type DictionaryOption, type ProblemOptions, type ProblemQuery, type ProblemSummary } from '@/api/problem/problem';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -45,12 +38,8 @@ const visibilityOptions = [
     { label: '私有', value: 'private' as const }
 ];
 
-const difficultyOptions = computed(() =>
-    difficulties.value.map((item) => ({ label: item.name ?? item.code, value: item.id }))
-);
-const categoryOptions = computed(() =>
-    categories.value.map((item) => ({ label: item.name, value: item.id }))
-);
+const difficultyOptions = computed(() => difficulties.value.map((item) => ({ label: item.name ?? item.code, value: item.id })));
+const categoryOptions = computed(() => categories.value.map((item) => ({ label: item.name, value: item.id })));
 const problemTypeOptions = computed(() =>
     problemTypes.value.map((type) => ({
         label: problemTypeLabels[type] ?? type,
@@ -137,10 +126,7 @@ async function loadProblems() {
             problemType: problemTypeFilter.value ?? undefined,
             difficultyId: difficultyFilter.value ?? undefined,
             categoryId: categoryFilter.value ?? undefined,
-            isPublic:
-                visibilityFilter.value === null
-                    ? undefined
-                    : visibilityFilter.value === 'public',
+            isPublic: visibilityFilter.value === null ? undefined : visibilityFilter.value === 'public',
             langCode: DEFAULT_LANG_CODE
         };
         const data = await fetchProblems(params, controller.signal);
@@ -258,17 +244,12 @@ function onPageChange(event: { page: number; rows: number }) {
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
                         <span class="p-input-icon-left">
-                            <InputText v-model="keyword" placeholder="搜索题目别名或标题" @keyup.enter="onSearch"
-                                style="min-width: 18rem" />
+                            <InputText v-model="keyword" placeholder="搜索题目别名或标题" @keyup.enter="onSearch" style="min-width: 18rem" />
                         </span>
-                        <Dropdown v-model="problemTypeFilter" :options="problemTypeOptions" optionLabel="label"
-                            optionValue="value" placeholder="题目类型" :showClear="true" style="min-width: 10rem" />
-                        <Dropdown v-model="difficultyFilter" :options="difficultyOptions" optionLabel="label"
-                            optionValue="value" placeholder="难度" :showClear="true" style="min-width: 10rem" />
-                        <Dropdown v-model="categoryFilter" :options="categoryOptions" optionLabel="label"
-                            optionValue="value" placeholder="分类" :showClear="true" style="min-width: 12rem" />
-                        <Dropdown v-model="visibilityFilter" :options="visibilityOptions" optionLabel="label"
-                            optionValue="value" placeholder="公开状态" :showClear="true" style="min-width: 10rem" />
+                        <Dropdown v-model="problemTypeFilter" :options="problemTypeOptions" optionLabel="label" optionValue="value" placeholder="题目类型" :showClear="true" style="min-width: 10rem" />
+                        <Dropdown v-model="difficultyFilter" :options="difficultyOptions" optionLabel="label" optionValue="value" placeholder="难度" :showClear="true" style="min-width: 10rem" />
+                        <Dropdown v-model="categoryFilter" :options="categoryOptions" optionLabel="label" optionValue="value" placeholder="分类" :showClear="true" style="min-width: 12rem" />
+                        <Dropdown v-model="visibilityFilter" :options="visibilityOptions" optionLabel="label" optionValue="value" placeholder="公开状态" :showClear="true" style="min-width: 10rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -277,10 +258,19 @@ function onPageChange(event: { page: number; rows: number }) {
                     </div>
                 </div>
 
-                <DataTable :value="problems" dataKey="id" :loading="loading" :rows="size" :paginator="true" :lazy="true"
-                    :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]"
-                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`" @page="onPageChange"
-                    responsiveLayout="scroll">
+                <DataTable
+                    :value="problems"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`"
+                    @page="onPageChange"
+                    responsiveLayout="scroll"
+                >
                     <Column field="title" header="标题" style="min-width: 14rem">
                         <template #body="{ data }">
                             {{ data.title || data.slug }}
@@ -304,8 +294,7 @@ function onPageChange(event: { page: number; rows: number }) {
                     </Column>
                     <Column field="isPublic" header="公开状态" style="min-width: 8rem">
                         <template #body="{ data }">
-                            <Tag :value="visibilityLabel(data.isPublic)"
-                                :severity="visibilitySeverity(data.isPublic)" />
+                            <Tag :value="visibilityLabel(data.isPublic)" :severity="visibilitySeverity(data.isPublic)" />
                         </template>
                     </Column>
                     <Column field="updatedAt" header="更新时间" style="min-width: 12rem">
@@ -316,20 +305,26 @@ function onPageChange(event: { page: number; rows: number }) {
                     <Column header="标签" style="min-width: 12rem">
                         <template #body="{ data }">
                             <div class="flex flex-wrap gap-2">
-                                <Tag v-for="tag in data.tags" :key="tag.id" severity="info" :value="tag.name" />
+                                <Tag v-for="tag in data.tags" :key="tag.id" :value="tag.name" />
                                 <span v-if="!data.tags?.length">-</span>
                             </div>
                         </template>
                     </Column>
                     <Column header="操作" style="min-width: 8rem">
                         <template #body="{ data }">
-                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
-                                {
-                                    label: '新建题目',
-                                    icon: 'pi pi-plus',
-                                    command: () => openCreate()
-                                }
-                            ]" @click="openEdit(data)" />
+                            <SplitButton
+                                label="编辑"
+                                icon="pi pi-pencil"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '新建题目',
+                                        icon: 'pi pi-plus',
+                                        command: () => openCreate()
+                                    }
+                                ]"
+                                @click="openEdit(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>

@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-    createTag,
-    deleteTag,
-    fetchTags,
-    updateTag,
-    type TagCreatePayload,
-    type TagUpdatePayload,
-    type TagView
-} from '@/api/problem/tag.ts';
+import { createTag, deleteTag, fetchTags, updateTag, type TagCreatePayload, type TagUpdatePayload, type TagView } from '@/api/problem/tag.ts';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
@@ -40,13 +32,11 @@ async function loadTags() {
     loading.value = true;
     try {
         const query = keyword.value.trim();
-        const data = await fetchTags(
-            {
-                keyword: query ? query : undefined,
-                page: page.value,
-                size: size.value
-            }
-        );
+        const data = await fetchTags({
+            keyword: query ? query : undefined,
+            page: page.value,
+            size: size.value
+        });
         tags.value = data.items ?? [];
         total.value = data.total ?? 0;
         if (typeof data.page === 'number') {
@@ -190,8 +180,7 @@ function formatDate(value?: string | null) {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索标签别名或名称" @keyup.enter="onSearch"
-                            style="min-width: 18rem" />
+                        <InputText v-model="keyword" placeholder="搜索标签别名或名称" @keyup.enter="onSearch" style="min-width: 18rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -200,9 +189,7 @@ function formatDate(value?: string | null) {
                     </div>
                 </div>
 
-                <DataTable :value="tags" dataKey="id" :loading="loading" :rows="size" :paginator="true" :lazy="true"
-                    :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size"
-                    responsiveLayout="scroll" @page="onPageChange">
+                <DataTable :value="tags" dataKey="id" :loading="loading" :rows="size" :paginator="true" :lazy="true" :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size" responsiveLayout="scroll" @page="onPageChange">
                     <Column field="slug" header="标签别名" style="min-width: 10rem" />
                     <Column field="name" header="标签名称" style="min-width: 10rem" />
                     <Column field="createdAt" header="创建时间" style="min-width: 12rem">
@@ -217,13 +204,19 @@ function formatDate(value?: string | null) {
                     </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
-                                {
-                                    label: '删除标签',
-                                    icon: 'pi pi-trash',
-                                    command: () => removeTag(data)
-                                }
-                            ]" @click="openEdit(data)" />
+                            <SplitButton
+                                label="编辑"
+                                icon="pi pi-pencil"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '删除标签',
+                                        icon: 'pi pi-trash',
+                                        command: () => removeTag(data)
+                                    }
+                                ]"
+                                @click="openEdit(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>
@@ -234,8 +227,7 @@ function formatDate(value?: string | null) {
         </div>
     </div>
 
-    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建标签' : '编辑标签'"
-        :style="{ width: '26rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建标签' : '编辑标签'" :style="{ width: '26rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
         <form class="form-grid" @submit.prevent="submitForm">
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="slug">标签别名</label>

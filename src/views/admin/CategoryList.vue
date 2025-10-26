@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-    createCategory,
-    deleteCategory,
-    fetchCategories,
-    updateCategory,
-    type CategoryCreatePayload,
-    type CategoryUpdatePayload,
-    type CategoryView
-} from '@/api/problem/category.ts';
+import { createCategory, deleteCategory, fetchCategories, updateCategory, type CategoryCreatePayload, type CategoryUpdatePayload, type CategoryView } from '@/api/problem/category.ts';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
@@ -40,13 +32,11 @@ async function loadCategories() {
     loading.value = true;
     try {
         const query = keyword.value.trim();
-        const data = await fetchCategories(
-            {
-                keyword: query ? query : undefined,
-                page: page.value,
-                size: size.value
-            }
-        );
+        const data = await fetchCategories({
+            keyword: query ? query : undefined,
+            page: page.value,
+            size: size.value
+        });
         categories.value = data.items ?? [];
         total.value = data.total ?? 0;
         if (typeof data.page === 'number') {
@@ -173,8 +163,7 @@ function onPageChange(event: { page: number; rows: number }) {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索分类编码或名称" @keyup.enter="onSearch"
-                            style="min-width: 18rem" />
+                        <InputText v-model="keyword" placeholder="搜索分类编码或名称" @keyup.enter="onSearch" style="min-width: 18rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -183,20 +172,36 @@ function onPageChange(event: { page: number; rows: number }) {
                     </div>
                 </div>
 
-                <DataTable :value="categories" dataKey="id" :loading="loading" :rows="size" :totalRecords="total"
-                    :paginator="true" :lazy="true" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size"
-                    responsiveLayout="scroll" @page="onPageChange">
+                <DataTable
+                    :value="categories"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :totalRecords="total"
+                    :paginator="true"
+                    :lazy="true"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :first="(page - 1) * size"
+                    responsiveLayout="scroll"
+                    @page="onPageChange"
+                >
                     <Column field="code" header="分类编码" style="min-width: 10rem" />
                     <Column field="name" header="分类名称" style="min-width: 10rem" />
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
-                                {
-                                    label: '删除分类',
-                                    icon: 'pi pi-trash',
-                                    command: () => removeCategory(data)
-                                }
-                            ]" @click="openEdit(data)" />
+                            <SplitButton
+                                label="编辑"
+                                icon="pi pi-pencil"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '删除分类',
+                                        icon: 'pi pi-trash',
+                                        command: () => removeCategory(data)
+                                    }
+                                ]"
+                                @click="openEdit(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>
@@ -207,8 +212,7 @@ function onPageChange(event: { page: number; rows: number }) {
         </div>
     </div>
 
-    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建分类' : '编辑分类'"
-        :style="{ width: '26rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建分类' : '编辑分类'" :style="{ width: '26rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
         <form class="form-grid" @submit.prevent="submitForm">
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="code">分类编码</label>

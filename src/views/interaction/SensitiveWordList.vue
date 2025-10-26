@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-    createSensitiveWord,
-    deleteSensitiveWord,
-    fetchSensitiveWords,
-    updateSensitiveWord,
-    type SensitiveWordQuery,
-    type SensitiveWordUpsertPayload,
-    type SensitiveWordView
-} from '@/api/interaction/sensitive-words';
+import { createSensitiveWord, deleteSensitiveWord, fetchSensitiveWords, updateSensitiveWord, type SensitiveWordQuery, type SensitiveWordUpsertPayload, type SensitiveWordView } from '@/api/interaction/sensitive-words';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
@@ -228,21 +220,24 @@ async function toggleWordActive(word: SensitiveWordView) {
 
 function copyWord(word: SensitiveWordView) {
     const info = `${word.word} (${word.level})`;
-    navigator.clipboard.writeText(word.word).then(() => {
-        toast.add({
-            severity: 'success',
-            summary: '复制成功',
-            detail: `已复制: ${info}`,
-            life: 3000
+    navigator.clipboard
+        .writeText(word.word)
+        .then(() => {
+            toast.add({
+                severity: 'success',
+                summary: '复制成功',
+                detail: `已复制: ${info}`,
+                life: 3000
+            });
+        })
+        .catch(() => {
+            toast.add({
+                severity: 'error',
+                summary: '复制失败',
+                detail: '无法访问剪贴板',
+                life: 3000
+            });
         });
-    }).catch(() => {
-        toast.add({
-            severity: 'error',
-            summary: '复制失败',
-            detail: '无法访问剪贴板',
-            life: 3000
-        });
-    });
 }
 </script>
 
@@ -267,7 +262,7 @@ function copyWord(word: SensitiveWordView) {
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
                         <Button label="重置" icon="pi pi-refresh" severity="secondary" @click="resetFilters" />
-                        <Button label="新增敏感词" icon="pi pi-plus" severity="success" @click="openCreate" />
+                        <Button label="新增" icon="pi pi-plus" @click="openCreate" />
                     </div>
                 </div>
 

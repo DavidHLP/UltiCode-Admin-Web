@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-    createDifficulty,
-    deleteDifficulty,
-    fetchDifficulties,
-    updateDifficulty,
-    type DifficultyCreatePayload,
-    type DifficultyUpdatePayload,
-    type DifficultyView
-} from '@/api/problem/difficulty.ts';
+import { createDifficulty, deleteDifficulty, fetchDifficulties, updateDifficulty, type DifficultyCreatePayload, type DifficultyUpdatePayload, type DifficultyView } from '@/api/problem/difficulty.ts';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
@@ -42,13 +34,11 @@ async function loadDifficulties() {
     loading.value = true;
     try {
         const query = keyword.value.trim();
-        const data = await fetchDifficulties(
-            {
-                keyword: query ? query : undefined,
-                page: page.value,
-                size: size.value
-            }
-        );
+        const data = await fetchDifficulties({
+            keyword: query ? query : undefined,
+            page: page.value,
+            size: size.value
+        });
         difficulties.value = data.items ?? [];
         total.value = data.total ?? 0;
         if (typeof data.page === 'number') {
@@ -184,8 +174,7 @@ function onPageChange(event: { page: number; rows: number }) {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索难度ID或编码" @keyup.enter="onSearch"
-                            style="min-width: 18rem" />
+                        <InputText v-model="keyword" placeholder="搜索难度ID或编码" @keyup.enter="onSearch" style="min-width: 18rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -194,21 +183,37 @@ function onPageChange(event: { page: number; rows: number }) {
                     </div>
                 </div>
 
-                <DataTable :value="difficulties" dataKey="id" :loading="loading" :rows="size" :paginator="true"
-                    :lazy="true" :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size"
-                    responsiveLayout="scroll" @page="onPageChange">
+                <DataTable
+                    :value="difficulties"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :first="(page - 1) * size"
+                    responsiveLayout="scroll"
+                    @page="onPageChange"
+                >
                     <Column field="id" header="难度ID" style="min-width: 8rem" />
                     <Column field="code" header="难度编码" style="min-width: 10rem" />
                     <Column field="sortKey" header="排序键" style="min-width: 8rem" />
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
-                                {
-                                    label: '删除难度',
-                                    icon: 'pi pi-trash',
-                                    command: () => removeDifficulty(data)
-                                }
-                            ]" @click="openEdit(data)" />
+                            <SplitButton
+                                label="编辑"
+                                icon="pi pi-pencil"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '删除难度',
+                                        icon: 'pi pi-trash',
+                                        command: () => removeDifficulty(data)
+                                    }
+                                ]"
+                                @click="openEdit(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>
@@ -219,13 +224,11 @@ function onPageChange(event: { page: number; rows: number }) {
         </div>
     </div>
 
-    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建难度' : '编辑难度'"
-        :style="{ width: '28rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建难度' : '编辑难度'" :style="{ width: '28rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
         <form class="form-grid" @submit.prevent="submitForm">
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="difficulty-id">难度ID</label>
-                <InputNumber id="difficulty-id" v-model="form.id" :useGrouping="false" placeholder="请输入唯一ID"
-                    class="w-full" :disabled="editingId !== null" :min="1" />
+                <InputNumber id="difficulty-id" v-model="form.id" :useGrouping="false" placeholder="请输入唯一ID" class="w-full" :disabled="editingId !== null" :min="1" />
             </div>
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="difficulty-code">难度编码</label>
@@ -233,8 +236,7 @@ function onPageChange(event: { page: number; rows: number }) {
             </div>
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="difficulty-sort">排序键</label>
-                <InputNumber id="difficulty-sort" v-model="form.sortKey" :useGrouping="false" placeholder="越小越靠前"
-                    class="w-full" :min="0" />
+                <InputNumber id="difficulty-sort" v-model="form.sortKey" :useGrouping="false" placeholder="越小越靠前" class="w-full" :min="0" />
             </div>
             <div class="flex justify-end gap-2 mt-3">
                 <Button type="button" label="取消" severity="secondary" @click="closeDialog" />

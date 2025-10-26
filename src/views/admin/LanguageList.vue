@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-    createLanguage,
-    deleteLanguage,
-    fetchLanguages,
-    updateLanguage,
-    type LanguageCreatePayload,
-    type LanguageUpdatePayload,
-    type LanguageView
-} from '@/api/problem/language.ts';
+import { createLanguage, deleteLanguage, fetchLanguages, updateLanguage, type LanguageCreatePayload, type LanguageUpdatePayload, type LanguageView } from '@/api/problem/language.ts';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 
@@ -53,14 +45,12 @@ async function loadLanguages() {
     loading.value = true;
     try {
         const query = keyword.value.trim();
-        const data = await fetchLanguages(
-            {
-                keyword: query || undefined,
-                isActive: activeFilter.value ?? undefined,
-                page: page.value,
-                size: size.value
-            }
-        );
+        const data = await fetchLanguages({
+            keyword: query || undefined,
+            isActive: activeFilter.value ?? undefined,
+            page: page.value,
+            size: size.value
+        });
         languages.value = data.items ?? [];
         total.value = data.total ?? 0;
         if (typeof data.page === 'number') {
@@ -204,10 +194,8 @@ function onPageChange(event: { page: number; rows: number }) {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索语言编码或名称" @keyup.enter="onSearch"
-                            style="min-width: 18rem" />
-                        <Dropdown v-model="activeFilter" :options="activeOptions" optionLabel="label"
-                            optionValue="value" placeholder="启用状态" style="min-width: 10rem" />
+                        <InputText v-model="keyword" placeholder="搜索语言编码或名称" @keyup.enter="onSearch" style="min-width: 18rem" />
+                        <Dropdown v-model="activeFilter" :options="activeOptions" optionLabel="label" optionValue="value" placeholder="启用状态" style="min-width: 10rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -216,9 +204,19 @@ function onPageChange(event: { page: number; rows: number }) {
                     </div>
                 </div>
 
-                <DataTable :value="languages" dataKey="id" :loading="loading" :rows="size" :paginator="true"
-                    :lazy="true" :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size"
-                    responsiveLayout="scroll" @page="onPageChange">
+                <DataTable
+                    :value="languages"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :first="(page - 1) * size"
+                    responsiveLayout="scroll"
+                    @page="onPageChange"
+                >
                     <Column field="displayName" header="语言名称" style="min-width: 12rem" />
                     <Column field="code" header="语言编码" style="min-width: 10rem" />
                     <Column field="runtimeImage" header="运行镜像" style="min-width: 14rem">
@@ -238,13 +236,19 @@ function onPageChange(event: { page: number; rows: number }) {
                     </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
-                                {
-                                    label: '删除语言',
-                                    icon: 'pi pi-trash',
-                                    command: () => removeLanguage(data)
-                                }
-                            ]" @click="openEdit(data)" />
+                            <SplitButton
+                                label="编辑"
+                                icon="pi pi-pencil"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '删除语言',
+                                        icon: 'pi pi-trash',
+                                        command: () => removeLanguage(data)
+                                    }
+                                ]"
+                                @click="openEdit(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>
@@ -255,8 +259,7 @@ function onPageChange(event: { page: number; rows: number }) {
         </div>
     </div>
 
-    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建语言' : '编辑语言'"
-        :style="{ width: '32rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建语言' : '编辑语言'" :style="{ width: '32rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
         <form class="form-grid" @submit.prevent="submitForm">
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="lang-code">语言编码</label>

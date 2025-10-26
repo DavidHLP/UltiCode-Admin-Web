@@ -120,10 +120,7 @@ async function loadContests() {
             keyword: keyword.value?.trim() || undefined,
             kind: kindFilter.value || undefined,
             status: statusFilter.value || undefined,
-            visible:
-                visibilityFilter.value == null
-                    ? undefined
-                    : visibilityFilter.value === 'public',
+            visible: visibilityFilter.value == null ? undefined : visibilityFilter.value === 'public',
             startFrom: undefined,
             endTo: undefined
         };
@@ -163,12 +160,8 @@ function openEditDialog(contest: ContestSummary) {
     formModel.startTime = contest.startTime ? new Date(contest.startTime) : null;
     formModel.endTime = contest.endTime ? new Date(contest.endTime) : null;
     formModel.registrationMode = contest.registrationMode ?? 'open';
-    formModel.registrationStartTime = contest.registrationStartTime
-        ? new Date(contest.registrationStartTime)
-        : null;
-    formModel.registrationEndTime = contest.registrationEndTime
-        ? new Date(contest.registrationEndTime)
-        : null;
+    formModel.registrationStartTime = contest.registrationStartTime ? new Date(contest.registrationStartTime) : null;
+    formModel.registrationEndTime = contest.registrationEndTime ? new Date(contest.registrationEndTime) : null;
     formModel.maxParticipants = contest.maxParticipants ?? null;
     formModel.penaltyPerWrong = contest.penaltyPerWrong ?? 20;
     formModel.scoreboardFreezeMinutes = contest.scoreboardFreezeMinutes ?? 0;
@@ -202,11 +195,7 @@ function buildPayload(): ContestUpsertPayload | null {
         });
         return null;
     }
-    if (
-        formModel.registrationStartTime &&
-        formModel.registrationEndTime &&
-        formModel.registrationEndTime < formModel.registrationStartTime
-    ) {
+    if (formModel.registrationStartTime && formModel.registrationEndTime && formModel.registrationEndTime < formModel.registrationStartTime) {
         toast.add({
             severity: 'warn',
             summary: '提示',
@@ -223,20 +212,11 @@ function buildPayload(): ContestUpsertPayload | null {
         endTime: formModel.endTime.toISOString(),
         visible: formModel.visible,
         registrationMode: formModel.registrationMode,
-        registrationStartTime: formModel.registrationStartTime
-            ? formModel.registrationStartTime.toISOString()
-            : null,
-        registrationEndTime: formModel.registrationEndTime
-            ? formModel.registrationEndTime.toISOString()
-            : null,
-        maxParticipants:
-            formModel.maxParticipants == null ? null : Number(formModel.maxParticipants),
-        penaltyPerWrong:
-            formModel.penaltyPerWrong == null ? null : Math.max(0, Number(formModel.penaltyPerWrong)),
-        scoreboardFreezeMinutes:
-            formModel.scoreboardFreezeMinutes == null
-                ? null
-                : Math.max(0, Number(formModel.scoreboardFreezeMinutes)),
+        registrationStartTime: formModel.registrationStartTime ? formModel.registrationStartTime.toISOString() : null,
+        registrationEndTime: formModel.registrationEndTime ? formModel.registrationEndTime.toISOString() : null,
+        maxParticipants: formModel.maxParticipants == null ? null : Number(formModel.maxParticipants),
+        penaltyPerWrong: formModel.penaltyPerWrong == null ? null : Math.max(0, Number(formModel.penaltyPerWrong)),
+        scoreboardFreezeMinutes: formModel.scoreboardFreezeMinutes == null ? null : Math.max(0, Number(formModel.scoreboardFreezeMinutes)),
         hideScoreDuringFreeze: formModel.hideScoreDuringFreeze
     };
     if (!payload.title) {
@@ -407,7 +387,6 @@ function mapStatusOption(status: ContestStatus) {
 }
 
 const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOption));
-
 </script>
 
 <template>
@@ -418,15 +397,11 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
                     <div class="flex flex-wrap gap-3 items-end">
                         <span class="p-input-icon-left">
                             <i class="pi pi-search" />
-                            <InputText v-model="keyword" placeholder="搜索比赛标题" style="min-width: 18rem"
-                                @keyup.enter="onSearch" />
+                            <InputText v-model="keyword" placeholder="搜索比赛标题" style="min-width: 18rem" @keyup.enter="onSearch" />
                         </span>
-                        <Dropdown v-model="kindFilter" :options="kindOptions" optionLabel="displayName"
-                            optionValue="code" placeholder="比赛类型" :showClear="true" style="min-width: 12rem" />
-                        <Dropdown v-model="statusFilter" :options="statusFilterOptions" optionLabel="label"
-                            optionValue="value" placeholder="比赛状态" :showClear="true" style="min-width: 12rem" />
-                        <Dropdown v-model="visibilityFilter" :options="visibilityOptions" optionLabel="label"
-                            optionValue="value" placeholder="公开状态" :showClear="true" style="min-width: 10rem" />
+                        <Dropdown v-model="kindFilter" :options="kindOptions" optionLabel="displayName" optionValue="code" placeholder="比赛类型" :showClear="true" style="min-width: 12rem" />
+                        <Dropdown v-model="statusFilter" :options="statusFilterOptions" optionLabel="label" optionValue="value" placeholder="比赛状态" :showClear="true" style="min-width: 12rem" />
+                        <Dropdown v-model="visibilityFilter" :options="visibilityOptions" optionLabel="label" optionValue="value" placeholder="公开状态" :showClear="true" style="min-width: 10rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -435,10 +410,19 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
                     </div>
                 </div>
 
-                <DataTable :value="contests" dataKey="id" :loading="loading" :rows="size" :paginator="true" :lazy="true"
-                    :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]"
-                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`" @page="onPageChange"
-                    responsiveLayout="scroll">
+                <DataTable
+                    :value="contests"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`"
+                    @page="onPageChange"
+                    responsiveLayout="scroll"
+                >
                     <Column field="title" header="比赛名称" style="min-width: 18rem">
                         <template #body="{ data }">
                             <a class="hover:underline cursor-pointer" @click="openContestDetail(data)">
@@ -480,18 +464,24 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
                     <Column field="participantCount" header="参赛人数" style="min-width: 6rem" />
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <SplitButton label="查看详情" icon="pi pi-eye" severity="info" size="small" :model="[
-                                {
-                                    label: '编辑比赛',
-                                    icon: 'pi pi-pencil',
-                                    command: () => openEditDialog(data)
-                                },
-                                {
-                                    label: '删除比赛',
-                                    icon: 'pi pi-trash',
-                                    command: () => removeContest(data)
-                                }
-                            ]" @click="openContestDetail(data)" />
+                            <SplitButton
+                                label="查看详情"
+                                icon="pi pi-eye"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '编辑比赛',
+                                        icon: 'pi pi-pencil',
+                                        command: () => openEditDialog(data)
+                                    },
+                                    {
+                                        label: '删除比赛',
+                                        icon: 'pi pi-trash',
+                                        command: () => removeContest(data)
+                                    }
+                                ]"
+                                @click="openContestDetail(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>
@@ -502,8 +492,7 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
         </div>
     </div>
 
-    <Dialog v-model:visible="createDialogVisible" :header="editingContestId ? '编辑比赛' : '新建比赛'" :modal="true"
-        :style="{ width: '42rem' }" :closable="!submitting" @hide="closeDialog">
+    <Dialog v-model:visible="createDialogVisible" :header="editingContestId ? '编辑比赛' : '新建比赛'" :modal="true" :style="{ width: '42rem' }" :closable="!submitting" @hide="closeDialog">
         <div class="flex flex-col gap-4">
             <!-- 比赛标题 -->
             <div class="flex flex-col gap-2">
@@ -515,15 +504,20 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-kind">赛制类型</label>
-                    <Dropdown id="contest-kind" v-model="formModel.kind" :options="kindOptions"
-                        optionLabel="displayName" optionValue="code" placeholder="选择赛制" />
+                    <Dropdown id="contest-kind" v-model="formModel.kind" :options="kindOptions" optionLabel="displayName" optionValue="code" placeholder="选择赛制" />
                 </div>
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-visible">公开状态</label>
-                    <SelectButton id="contest-visible" v-model="formModel.visible" :options="[
-                        { label: '公开', value: true },
-                        { label: '私有', value: false }
-                    ]" optionLabel="label" optionValue="value" />
+                    <SelectButton
+                        id="contest-visible"
+                        v-model="formModel.visible"
+                        :options="[
+                            { label: '公开', value: true },
+                            { label: '私有', value: false }
+                        ]"
+                        optionLabel="label"
+                        optionValue="value"
+                    />
                 </div>
             </div>
 
@@ -531,13 +525,11 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-start">开始时间</label>
-                    <Calendar id="contest-start" v-model="formModel.startTime" showIcon hourFormat="24" showTime
-                        placeholder="选择开始时间" />
+                    <Calendar id="contest-start" v-model="formModel.startTime" showIcon hourFormat="24" showTime placeholder="选择开始时间" />
                 </div>
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-end">结束时间</label>
-                    <Calendar id="contest-end" v-model="formModel.endTime" showIcon hourFormat="24" showTime
-                        placeholder="选择结束时间" />
+                    <Calendar id="contest-end" v-model="formModel.endTime" showIcon hourFormat="24" showTime placeholder="选择结束时间" />
                 </div>
             </div>
 
@@ -545,27 +537,22 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-registration-mode">报名模式</label>
-                    <Dropdown id="contest-registration-mode" v-model="formModel.registrationMode"
-                        :options="registrationModeOptions" optionLabel="label" optionValue="value"
-                        placeholder="选择报名模式" />
+                    <Dropdown id="contest-registration-mode" v-model="formModel.registrationMode" :options="registrationModeOptions" optionLabel="label" optionValue="value" placeholder="选择报名模式" />
                 </div>
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-max-participants">人数上限 (可选)</label>
-                    <InputNumber id="contest-max-participants" v-model="formModel.maxParticipants" :useGrouping="false"
-                        :min="1" placeholder="不限请留空" />
+                    <InputNumber id="contest-max-participants" v-model="formModel.maxParticipants" :useGrouping="false" :min="1" placeholder="不限请留空" />
                 </div>
             </div>
 
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-registration-start">报名开始时间 (可选)</label>
-                    <Calendar id="contest-registration-start" v-model="formModel.registrationStartTime" showIcon
-                        hourFormat="24" showTime placeholder="选择报名开始时间" />
+                    <Calendar id="contest-registration-start" v-model="formModel.registrationStartTime" showIcon hourFormat="24" showTime placeholder="选择报名开始时间" />
                 </div>
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-registration-end">报名结束时间 (可选)</label>
-                    <Calendar id="contest-registration-end" v-model="formModel.registrationEndTime" showIcon
-                        hourFormat="24" showTime placeholder="选择报名结束时间" />
+                    <Calendar id="contest-registration-end" v-model="formModel.registrationEndTime" showIcon hourFormat="24" showTime placeholder="选择报名结束时间" />
                 </div>
             </div>
 
@@ -573,31 +560,33 @@ const statusFilterOptions = computed(() => statusOptions.value.map(mapStatusOpti
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-penalty">罚时 (分钟)</label>
-                    <InputNumber id="contest-penalty" v-model="formModel.penaltyPerWrong" :useGrouping="false" :min="0"
-                        placeholder="默认 20" />
+                    <InputNumber id="contest-penalty" v-model="formModel.penaltyPerWrong" :useGrouping="false" :min="0" placeholder="默认 20" />
                 </div>
                 <div class="flex flex-col gap-2 w-full">
                     <label for="contest-freeze">封榜提前 (分钟)</label>
-                    <InputNumber id="contest-freeze" v-model="formModel.scoreboardFreezeMinutes" :useGrouping="false"
-                        :min="0" placeholder="默认 0" />
+                    <InputNumber id="contest-freeze" v-model="formModel.scoreboardFreezeMinutes" :useGrouping="false" :min="0" placeholder="默认 0" />
                 </div>
             </div>
 
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex flex-col gap-2 w-full">
                     <label>封榜显示策略</label>
-                    <SelectButton v-model="formModel.hideScoreDuringFreeze" :options="[
-                        { label: '封榜隐藏最新结果', value: true },
-                        { label: '仅记录封榜提交', value: false }
-                    ]" optionLabel="label" optionValue="value" />
+                    <SelectButton
+                        v-model="formModel.hideScoreDuringFreeze"
+                        :options="[
+                            { label: '封榜隐藏最新结果', value: true },
+                            { label: '仅记录封榜提交', value: false }
+                        ]"
+                        optionLabel="label"
+                        optionValue="value"
+                    />
                 </div>
             </div>
 
             <!-- 比赛简介 -->
             <div class="flex flex-col gap-2">
                 <label for="contest-description">比赛简介 (可选)</label>
-                <Textarea id="contest-description" v-model="formModel.descriptionMd" rows="4" autoResize
-                    placeholder="请输入比赛简介..." />
+                <Textarea id="contest-description" v-model="formModel.descriptionMd" rows="4" autoResize placeholder="请输入比赛简介..." />
             </div>
         </div>
         <template #footer>

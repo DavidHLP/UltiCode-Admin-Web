@@ -1,15 +1,5 @@
 <script setup lang="ts">
-import {
-    createRole,
-    deleteRole,
-    fetchRoleList,
-    fetchRolePermissionOptions,
-    updateRole,
-    type PermissionDto,
-    type RoleCreatePayload,
-    type RoleUpdatePayload,
-    type RoleView
-} from '@/api/admin/role';
+import { createRole, deleteRole, fetchRoleList, fetchRolePermissionOptions, updateRole, type PermissionDto, type RoleCreatePayload, type RoleUpdatePayload, type RoleView } from '@/api/admin/role';
 import SensitiveActionDialog, { type SensitiveActionDialogExpose } from '@/components/SensitiveActionDialog.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';
@@ -141,10 +131,7 @@ async function submitForm() {
     }
     const remarkRaw = form.value.remark?.trim();
     const remark = remarkRaw === undefined || remarkRaw === '' ? null : remarkRaw;
-    const permissionIds =
-        form.value.permissionIds && form.value.permissionIds.length > 0
-            ? Array.from(new Set(form.value.permissionIds))
-            : [];
+    const permissionIds = form.value.permissionIds && form.value.permissionIds.length > 0 ? Array.from(new Set(form.value.permissionIds)) : [];
 
     const sensitiveToken = await acquireSensitiveToken();
     if (!sensitiveToken) {
@@ -229,8 +216,7 @@ async function acquireSensitiveToken(): Promise<string | null> {
             <div class="card">
                 <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
                     <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索角色编码或名称" @keyup.enter="onSearch"
-                            style="min-width: 18rem" />
+                        <InputText v-model="keyword" placeholder="搜索角色编码或名称" @keyup.enter="onSearch" style="min-width: 18rem" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
@@ -250,8 +236,7 @@ async function acquireSensitiveToken(): Promise<string | null> {
                     <Column header="拥有权限" style="min-width: 18rem">
                         <template #body="{ data }">
                             <div v-if="data.permissions?.length" class="flex flex-wrap gap-2">
-                                <Tag v-for="permission in data.permissions" :key="permission.id" severity="info"
-                                    :value="permission.code" :title="permission.name" />
+                                <Tag v-for="permission in data.permissions" :key="permission.id" :value="permission.code" :title="permission.name" />
                             </div>
                             <span v-else>-</span>
                         </template>
@@ -268,13 +253,19 @@ async function acquireSensitiveToken(): Promise<string | null> {
                     </Column>
                     <Column header="操作" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <SplitButton label="编辑" icon="pi pi-pencil" severity="info" size="small" :model="[
-                                {
-                                    label: '删除角色',
-                                    icon: 'pi pi-trash',
-                                    command: () => removeRole(data)
-                                }
-                            ]" @click="openEdit(data)" />
+                            <SplitButton
+                                label="编辑"
+                                icon="pi pi-pencil"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: '删除角色',
+                                        icon: 'pi pi-trash',
+                                        command: () => removeRole(data)
+                                    }
+                                ]"
+                                @click="openEdit(data)"
+                            />
                         </template>
                     </Column>
                     <template #empty>
@@ -285,8 +276,7 @@ async function acquireSensitiveToken(): Promise<string | null> {
         </div>
     </div>
 
-    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建角色' : '编辑角色'"
-        :style="{ width: '28rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
+    <Dialog v-model:visible="dialogVisible" modal :header="editingId === null ? '新建角色' : '编辑角色'" :style="{ width: '28rem' }" :breakpoints="{ '960px': '90vw', '640px': '95vw' }" @hide="closeDialog">
         <form class="form-grid" @submit.prevent="submitForm">
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="code">角色编码</label>
@@ -302,10 +292,20 @@ async function acquireSensitiveToken(): Promise<string | null> {
             </div>
             <div class="field">
                 <label class="font-medium text-sm mb-1 block" for="permissions">关联权限</label>
-                <MultiSelect id="permissions" v-model="form.permissionIds" :options="permissionOptions"
-                    optionLabel="label" optionValue="id" display="chip" placeholder="选择可访问的权限" filter
-                    :filterFields="['code', 'name']" :loading="permissionLoading"
-                    :disabled="permissionLoading && !permissionOptions.length" class="w-full" />
+                <MultiSelect
+                    id="permissions"
+                    v-model="form.permissionIds"
+                    :options="permissionOptions"
+                    optionLabel="label"
+                    optionValue="id"
+                    display="chip"
+                    placeholder="选择可访问的权限"
+                    filter
+                    :filterFields="['code', 'name']"
+                    :loading="permissionLoading"
+                    :disabled="permissionLoading && !permissionOptions.length"
+                    class="w-full"
+                />
                 <small class="text-xs text-color-secondary">可多选，支持按编码或名称过滤。</small>
             </div>
             <div class="flex justify-end gap-2 mt-3">
@@ -330,5 +330,4 @@ async function acquireSensitiveToken(): Promise<string | null> {
     flex-direction: column;
     gap: 1.25rem;
 }
-
 </style>
