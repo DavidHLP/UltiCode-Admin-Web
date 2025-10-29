@@ -118,7 +118,7 @@ export interface JudgeJobQuery {
 
 export function fetchJudgeNodes(params?: { status?: string; keyword?: string }, signal?: AbortSignal) {
     return requestData<JudgeNodeView[]>({
-        url: '/api/judge/nodes',
+        url: '/api/admin/judge/nodes',
         method: 'get',
         params,
         signal
@@ -127,7 +127,7 @@ export function fetchJudgeNodes(params?: { status?: string; keyword?: string }, 
 
 export function fetchJudgeJobs(params: JudgeJobQuery, signal?: AbortSignal) {
     return requestData<PageResult<JudgeJobView>>({
-        url: '/api/judge/jobs',
+        url: '/api/admin/judge/jobs',
         method: 'get',
         params,
         signal
@@ -136,14 +136,14 @@ export function fetchJudgeJobs(params: JudgeJobQuery, signal?: AbortSignal) {
 
 export function fetchJudgeJobDetail(jobId: number) {
     return requestData<JudgeJobDetailView>({
-        url: `/api/judge/jobs/${jobId}`,
+        url: `/api/admin/judge/jobs/${jobId}`,
         method: 'get'
     });
 }
 
 export function retryJudgeJob(jobId: number) {
     return requestData<void>({
-        url: `/api/judge/jobs/${jobId}/retry`,
+        url: `/api/admin/judge/jobs/${jobId}/retry`,
         method: 'post'
     });
 }
