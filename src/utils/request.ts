@@ -1,13 +1,13 @@
 import router from '@/router/index';
-import { useAuthStore } from '@/stores/auth';
+import {useAuthStore} from '@/stores/auth';
 import {
     ensureSensitiveActionToken,
     SensitiveActionCancelledError,
     type SensitiveActionContext
 } from '@/utils/sensitive-action-guard';
 import axios, {
-    AxiosHeaders,
     type AxiosError,
+    AxiosHeaders,
     type AxiosInstance,
     type AxiosRequestConfig,
     type AxiosResponse,
@@ -273,6 +273,10 @@ export function unwrapResponse<T>(payload: unknown): T {
 
 export function requestData<T = unknown>(config: RequestConfig): Promise<T> {
     return service.request<ApiResponse<T> | T>(config).then((response) => unwrapResponse<T>(response.data));
+}
+
+export function requestPublicData<T = unknown>(config: RequestConfig): Promise<T> {
+    return requestData<T>({...config, skipSensitiveVerification: true});
 }
 
 export default service;
