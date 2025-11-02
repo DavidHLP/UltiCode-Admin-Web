@@ -1,37 +1,39 @@
-<script setup>
+<script setup lang="ts">
 import { useLayout } from '@/layout/composables/layout';
 import { onMounted, ref, watch } from 'vue';
+import { DashboardService, type DashboardTrendPoint } from '@/service/dashboard';
 
 const { getPrimary, getSurface, isDarkTheme } = useLayout();
 
-const chartData = ref(null);
-const chartOptions = ref(null);
+const chartData = ref();
+const chartOptions = ref();
+const trendPoints = ref<DashboardTrendPoint[]>([]);
+const loading = ref(true);
 
-function setChartData() {
+const setChartData = (points: DashboardTrendPoint[]) => {
     const documentStyle = getComputedStyle(document.documentElement);
-
     return {
-        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+        labels: points.map((point) => point.label),
         datasets: [
             {
                 type: 'bar',
-                label: 'Subscriptions',
+                label: '通过',
                 backgroundColor: documentStyle.getPropertyValue('--p-primary-400'),
-                data: [4000, 10000, 15000, 4000],
+                data: points.map((point) => point.acceptedCount),
                 barThickness: 32
             },
             {
                 type: 'bar',
-                label: 'Advertising',
+                label: '错误',
                 backgroundColor: documentStyle.getPropertyValue('--p-primary-300'),
-                data: [2100, 8400, 2400, 7500],
+                data: points.map((point) => point.wrongCount),
                 barThickness: 32
             },
             {
                 type: 'bar',
-                label: 'Affiliate',
+                label: '待判定',
                 backgroundColor: documentStyle.getPropertyValue('--p-primary-200'),
-                data: [4100, 5200, 3400, 7400],
+                data: points.map((point) => point.pendingCount),
                 borderRadius: {
                     topLeft: 8,
                     topRight: 8
@@ -41,9 +43,9 @@ function setChartData() {
             }
         ]
     };
-}
+};
 
-function setChartOptions() {
+const setChartOptions = () => {
     const documentStyle = getComputedStyle(document.documentElement);
     const borderColor = documentStyle.getPropertyValue('--surface-border');
     const textMutedColor = documentStyle.getPropertyValue('--text-color-secondary');
@@ -65,7 +67,8 @@ function setChartOptions() {
             y: {
                 stacked: true,
                 ticks: {
-                    color: textMutedColor
+                    color: textMutedColor,
+                    precision: 0
                 },
                 grid: {
                     color: borderColor,
@@ -75,22 +78,43 @@ function setChartOptions() {
             }
         }
     };
-}
+};
+
+const loadTrendData = async () => {
+    loading.value = true;
+    try {
+        trendPoints.value = await DashboardService.getSubmissionTrends();
+        chartData.value = setChartData(trendPoints.value);
+    } catch (error) {
+        console.error('加载提交流水失败', error);
+        trendPoints.value = [];
+        chartData.value = setChartData(trendPoints.value);
+    } finally {
+        chartOptions.value = setChartOptions();
+        loading.value = false;
+    }
+};
 
 watch([getPrimary, getSurface, isDarkTheme], () => {
-    chartData.value = setChartData();
+    chartData.value = setChartData(trendPoints.value);
     chartOptions.value = setChartOptions();
 });
 
 onMounted(() => {
-    chartData.value = setChartData();
-    chartOptions.value = setChartOptions();
+    void loadTrendData();
 });
 </script>
 
 <template>
     <div class="card">
-        <div class="font-semibold text-xl mb-4">Revenue Stream</div>
-        <Chart type="bar" :data="chartData" :options="chartOptions" class="h-80" />
+        <div class="font-semibold text-xl mb-4">提交流水</div>
+        <Skeleton v-if="loading" width="100%" height="18rem" />
+        <Chart
+            v-else
+            type="bar"
+            :data="chartData"
+            :options="chartOptions"
+            class="h-80"
+        />
     </div>
 </template>

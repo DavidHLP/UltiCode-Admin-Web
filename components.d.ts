@@ -48,6 +48,7 @@ declare module 'vue' {
     SelectButton: typeof import('primevue/selectbutton')['default']
     SensitiveActionDialog: typeof import('./src/components/SensitiveActionDialog.vue')['default']
     Sidebar: typeof import('primevue/sidebar')['default']
+    Skeleton: typeof import('primevue/skeleton')['default']
     SplitButton: typeof import('primevue/splitbutton')['default']
     StatsWidget: typeof import('./src/components/dashboard/StatsWidget.vue')['default']
     TabPanel: typeof import('primevue/tabpanel')['default']
