@@ -10,18 +10,18 @@ import {
     type TestcaseGroup,
     type TestcaseGroupInput,
     type TestcaseInput
-} from '@/api/problem/datasets';
+} from '@/api/problem/datasets.ts';
 import {
     createTestcaseGroup,
     deleteTestcaseGroup,
     updateTestcaseGroup
-} from '@/api/problem/testcasegroups';
-import { createTestcase, deleteTestcase, updateTestcase } from '@/api/problem/testcases';
+} from '@/api/problem/testcasegroups.ts';
+import { createTestcase, deleteTestcase, updateTestcase } from '@/api/problem/testcases.ts';
 import MonacoEditor from 'monaco-editor-vue3';
 import { useToast } from 'primevue/usetoast';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useProblemEditorContext } from './context';
+import { useProblemEditorContext } from './context.ts';
 
 const editor = useProblemEditorContext();
 const route = useRoute();

@@ -10,7 +10,7 @@ import {
     type ProblemOptions,
     type ProblemUpsertPayload,
     type TagOption
-} from '@/api/problem/problem';
+} from '@/api/problem/problem.ts';
 import gfmPlugin from '@bytemd/plugin-gfm';
 import highlightPlugin from '@bytemd/plugin-highlight';
 import mathPlugin from '@bytemd/plugin-math';
@@ -33,7 +33,7 @@ import {
     type ProblemForm,
     type SelectionOption,
     type StatementForm
-} from './context';
+} from './context.ts';
 
 const DEFAULT_LANG_CODE = 'zh-CN';
 

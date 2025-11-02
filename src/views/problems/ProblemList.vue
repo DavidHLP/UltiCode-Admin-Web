@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { fetchProblemOptions, fetchProblems, type DictionaryOption, type ProblemOptions, type ProblemQuery, type ProblemSummary } from '@/api/problem/problem';
+import { fetchProblemOptions, fetchProblems, type DictionaryOption, type ProblemOptions, type ProblemQuery, type ProblemSummary } from '@/api/problem/problem.ts';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';

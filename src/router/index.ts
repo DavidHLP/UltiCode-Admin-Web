@@ -68,7 +68,7 @@ const problemRoutes: RouteRecordRaw[] = [
     {
         path: '/problems',
         name: 'problems',
-        component: () => import('@/views/admin/ProblemList.vue'),
+        component: () => import('@/views/problems/ProblemList.vue'),
         meta: {
             requiresAuth: true,
             breadcrumb: [{ label: '题库管理' }, { label: '题目列表' }]
@@ -77,13 +77,13 @@ const problemRoutes: RouteRecordRaw[] = [
     {
         path: '/problems/new',
         name: 'problemsCreate',
-        component: () => import('@/views/admin/ProblemEdit.vue'),
+        component: () => import('@/views/problems/ProblemEdit.vue'),
         redirect: { name: 'problemsCreateBasic' },
         children: [
             {
                 path: 'basic',
                 name: 'problemsCreateBasic',
-                component: () => import('@/views/admin/problem-editor/ProblemEditorBasics.vue'),
+                component: () => import('@/views/problems/problem-editor/ProblemEditorBasics.vue'),
                 meta: {
                     requiresAuth: true,
                     breadcrumb: [{ label: '题库管理' }, { label: '题目列表', to: '/problems' }, { label: '新建题目' }, { label: '基本信息' }]
@@ -92,7 +92,7 @@ const problemRoutes: RouteRecordRaw[] = [
             {
                 path: 'statements',
                 name: 'problemsCreateStatements',
-                component: () => import('@/views/admin/problem-editor/ProblemEditorStatements.vue'),
+                component: () => import('@/views/problems/problem-editor/ProblemEditorStatements.vue'),
                 meta: {
                     requiresAuth: true,
                     breadcrumb: [{ label: '题库管理' }, { label: '题目列表', to: '/problems' }, { label: '新建题目' }, { label: '题面内容' }]
@@ -101,7 +101,7 @@ const problemRoutes: RouteRecordRaw[] = [
             {
                 path: 'configurations',
                 name: 'problemsCreateConfigurations',
-                component: () => import('@/views/admin/problem-editor/ProblemEditorConfigurations.vue'),
+                component: () => import('@/views/problems/problem-editor/ProblemEditorConfigurations.vue'),
                 alias: ['datasets'],
                 meta: {
                     requiresAuth: true,
@@ -113,7 +113,7 @@ const problemRoutes: RouteRecordRaw[] = [
     {
         path: '/problems/categories',
         name: 'categories',
-        component: () => import('@/views/admin/CategoryList.vue'),
+        component: () => import('@/views/problems/CategoryList.vue'),
         meta: {
             requiresAuth: true,
             breadcrumb: [{ label: '题库管理' }, { label: '分类管理' }]
@@ -122,7 +122,7 @@ const problemRoutes: RouteRecordRaw[] = [
     {
         path: '/problems/difficulties',
         name: 'difficulties',
-        component: () => import('@/views/admin/DifficultyList.vue'),
+        component: () => import('@/views/problems/DifficultyList.vue'),
         meta: {
             requiresAuth: true,
             breadcrumb: [{ label: '题库管理' }, { label: '难度管理' }]
@@ -131,7 +131,7 @@ const problemRoutes: RouteRecordRaw[] = [
     {
         path: '/problems/languages',
         name: 'languages',
-        component: () => import('@/views/admin/LanguageList.vue'),
+        component: () => import('@/views/problems/LanguageList.vue'),
         meta: {
             requiresAuth: true,
             breadcrumb: [{ label: '题库管理' }, { label: '语言管理' }]
@@ -140,7 +140,7 @@ const problemRoutes: RouteRecordRaw[] = [
     {
         path: '/problems/tags',
         name: 'tags',
-        component: () => import('@/views/admin/TagList.vue'),
+        component: () => import('@/views/problems/TagList.vue'),
         meta: {
             requiresAuth: true,
             breadcrumb: [{ label: '题库管理' }, { label: '标签管理' }]

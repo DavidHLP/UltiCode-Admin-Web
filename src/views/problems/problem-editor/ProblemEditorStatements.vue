@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Editor as MarkdownEditor } from '@bytemd/vue-next';
-import { useProblemEditorContext } from './context';
+import { useProblemEditorContext } from './context.ts';
 
 const editor = useProblemEditorContext();
 </script>
