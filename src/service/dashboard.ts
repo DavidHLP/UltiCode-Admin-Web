@@ -59,33 +59,33 @@ export interface DashboardActivityGroup {
 export const DashboardService = {
     getSummary(): Promise<DashboardSummaryResponse> {
         return requestPublicData<DashboardSummaryResponse>({
-            url: '/api/dashboard/summary',
+            url: '/api/admin/dashboard/summary',
             method: 'get'
         });
     },
     getRecentSubmissions(limit = 6): Promise<RecentSubmission[]> {
         return requestPublicData<RecentSubmission[]>({
-            url: '/api/dashboard/recent-submissions',
+            url: '/api/admin/dashboard/recent-submissions',
             method: 'get',
             params: { limit }
         });
     },
     getTrendingProblems(limit = 6): Promise<TrendingProblem[]> {
         return requestPublicData<TrendingProblem[]>({
-            url: '/api/dashboard/trending-problems',
+            url: '/api/admin/dashboard/trending-problems',
             method: 'get',
             params: { limit }
         });
     },
     getSubmissionTrends(): Promise<DashboardTrendPoint[]> {
         return requestPublicData<DashboardTrendPoint[]>({
-            url: '/api/dashboard/submission-trends',
+            url: '/api/admin/dashboard/submission-trends',
             method: 'get'
         });
     },
     getActivities(size = 9): Promise<DashboardActivityGroup[]> {
         return requestPublicData<DashboardActivityGroup[]>({
-            url: '/api/dashboard/activities',
+            url: '/api/admin/dashboard/activities',
             method: 'get',
             params: { size }
         });
