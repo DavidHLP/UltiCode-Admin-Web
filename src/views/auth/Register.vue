@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
-import { requestRegistrationCode } from '@/api/auth/auth';
-import { useAuthStore } from '@/stores/auth';
+import { requestRegistrationCode } from '@/api/auth/auth.ts';
+import { useAuthStore } from '@/stores/auth.ts';
 import { useToast } from 'primevue/usetoast';
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

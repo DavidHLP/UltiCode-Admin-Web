@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import type {
-    ContestRegistration,
-    ContestRegistrationDecisionPayload,
-    ContestRegistrationStatusCode,
-    ContestScoreboardRecord,
-    ProblemSummaryOption,
-    UserSummaryOption
-} from '@/api/contests/contest';
+import type { ContestRegistration, ContestRegistrationDecisionPayload, ContestRegistrationStatusCode, ContestScoreboardRecord, ProblemSummaryOption, UserSummaryOption } from '@/api/contests/contest';
 import {
     addContestParticipants,
+    type ContestDetail,
+    type ContestKindOption,
+    type ContestOptions,
+    type ContestParticipantsPayload,
+    type ContestProblemInput,
+    type ContestScoreboard,
+    type ContestSubmission,
+    type ContestUpsertPayload,
     createContestRegistration,
     decideContestRegistrations,
     fetchContest,
@@ -20,15 +21,7 @@ import {
     saveContestProblems,
     searchContestProblems,
     searchContestUsers,
-    updateContest,
-    type ContestDetail,
-    type ContestKindOption,
-    type ContestOptions,
-    type ContestParticipantsPayload,
-    type ContestProblemInput,
-    type ContestScoreboard,
-    type ContestSubmission,
-    type ContestUpsertPayload
+    updateContest
 } from '@/api/contests/contest';
 import { NDescriptions, NDescriptionsItem, NEmpty, NSkeleton } from 'naive-ui';
 import { useToast } from 'primevue/usetoast';
@@ -109,18 +102,7 @@ const verdictFilter = ref<string | null>(null);
 const userFilter = ref<number | null>(null);
 const problemFilter = ref<number | null>(null);
 
-const verdictOptions = [
-    'PD',
-    'AC',
-    'WA',
-    'TLE',
-    'MLE',
-    'RE',
-    'CE',
-    'OLE',
-    'PE',
-    'IE'
-];
+const verdictOptions = ['PD', 'AC', 'WA', 'TLE', 'MLE', 'RE', 'CE', 'OLE', 'PE', 'IE'];
 
 onMounted(async () => {
     await loadOptions();
@@ -294,12 +276,8 @@ function openEditDialog() {
     editForm.startTime = contest.startTime ? new Date(contest.startTime) : null;
     editForm.endTime = contest.endTime ? new Date(contest.endTime) : null;
     editForm.registrationMode = contest.registrationMode ?? 'open';
-    editForm.registrationStartTime = contest.registrationStartTime
-        ? new Date(contest.registrationStartTime)
-        : null;
-    editForm.registrationEndTime = contest.registrationEndTime
-        ? new Date(contest.registrationEndTime)
-        : null;
+    editForm.registrationStartTime = contest.registrationStartTime ? new Date(contest.registrationStartTime) : null;
+    editForm.registrationEndTime = contest.registrationEndTime ? new Date(contest.registrationEndTime) : null;
     editForm.maxParticipants = contest.maxParticipants ?? null;
     editForm.penaltyPerWrong = contest.penaltyPerWrong ?? 20;
     editForm.scoreboardFreezeMinutes = contest.scoreboardFreezeMinutes ?? 0;
@@ -322,11 +300,7 @@ function buildUpsertPayload(): ContestUpsertPayload | null {
         toast.add({ severity: 'warn', summary: '提示', detail: '结束时间必须晚于开始时间', life: 3000 });
         return null;
     }
-    if (
-        editForm.registrationStartTime &&
-        editForm.registrationEndTime &&
-        editForm.registrationEndTime < editForm.registrationStartTime
-    ) {
+    if (editForm.registrationStartTime && editForm.registrationEndTime && editForm.registrationEndTime < editForm.registrationStartTime) {
         toast.add({ severity: 'warn', summary: '提示', detail: '报名结束时间必须晚于报名开始时间', life: 3000 });
         return null;
     }
@@ -338,20 +312,11 @@ function buildUpsertPayload(): ContestUpsertPayload | null {
         endTime: editForm.endTime.toISOString(),
         visible: editForm.visible,
         registrationMode: editForm.registrationMode,
-        registrationStartTime: editForm.registrationStartTime
-            ? editForm.registrationStartTime.toISOString()
-            : null,
-        registrationEndTime: editForm.registrationEndTime
-            ? editForm.registrationEndTime.toISOString()
-            : null,
-        maxParticipants:
-            editForm.maxParticipants == null ? null : Number(editForm.maxParticipants),
-        penaltyPerWrong:
-            editForm.penaltyPerWrong == null ? null : Math.max(0, Number(editForm.penaltyPerWrong)),
-        scoreboardFreezeMinutes:
-            editForm.scoreboardFreezeMinutes == null
-                ? null
-                : Math.max(0, Number(editForm.scoreboardFreezeMinutes)),
+        registrationStartTime: editForm.registrationStartTime ? editForm.registrationStartTime.toISOString() : null,
+        registrationEndTime: editForm.registrationEndTime ? editForm.registrationEndTime.toISOString() : null,
+        maxParticipants: editForm.maxParticipants == null ? null : Number(editForm.maxParticipants),
+        penaltyPerWrong: editForm.penaltyPerWrong == null ? null : Math.max(0, Number(editForm.penaltyPerWrong)),
+        scoreboardFreezeMinutes: editForm.scoreboardFreezeMinutes == null ? null : Math.max(0, Number(editForm.scoreboardFreezeMinutes)),
         hideScoreDuringFreeze: editForm.hideScoreDuringFreeze
     };
     if (!payload.title) {
@@ -478,9 +443,7 @@ async function addParticipants() {
         toast.add({ severity: 'warn', summary: '提示', detail: '请选择需加入的用户', life: 3000 });
         return;
     }
-    const ids = selectedParticipants.value
-        .map((item) => Number(item.id))
-        .filter((value) => !Number.isNaN(value) && value > 0);
+    const ids = selectedParticipants.value.map((item) => Number(item.id)).filter((value) => !Number.isNaN(value) && value > 0);
     if (ids.length === 0) {
         toast.add({ severity: 'warn', summary: '提示', detail: '未找到有效的用户ID', life: 3000 });
         return;
@@ -834,9 +797,7 @@ const freezeStatusTag = computed(() => {
         return null;
     }
     if (board.freezeActive) {
-        return board.freezeHideScore
-            ? `封榜中 · 隐藏最新结果 · 提前 ${board.freezeMinutes} 分钟`
-            : `封榜中 · 仅标记提交 · 提前 ${board.freezeMinutes} 分钟`;
+        return board.freezeHideScore ? `封榜中 · 隐藏最新结果 · 提前 ${board.freezeMinutes} 分钟` : `封榜中 · 仅标记提交 · 提前 ${board.freezeMinutes} 分钟`;
     }
     return `封榜配置 · 提前 ${board.freezeMinutes} 分钟`;
 });
@@ -854,7 +815,6 @@ const pendingSubmissionTag = computed(() => {
     }
     return `封榜待揭晓 ${count} 次提交`;
 });
-
 </script>
 
 <template>
@@ -882,8 +842,7 @@ const pendingSubmissionTag = computed(() => {
                             <div class="flex items-center gap-2">
                                 <i class="pi pi-eye text-color-secondary"></i>
                                 <span class="text-color-secondary">公开：</span>
-                                <Tag :value="visibilityLabel(detail?.visible)"
-                                    :severity="visibilitySeverity(detail?.visible)" />
+                                <Tag :value="visibilityLabel(detail?.visible)" :severity="visibilitySeverity(detail?.visible)" />
                             </div>
                         </div>
                     </div>
@@ -933,10 +892,7 @@ const pendingSubmissionTag = computed(() => {
 
                 <div v-if="detail?.descriptionMd" class="mt-4">
                     <Divider />
-                    <div
-                        class="text-sm whitespace-pre-line text-color-secondary p-3 bg-surface-50 dark:bg-surface-900 border-round">
-                        <i class="pi pi-info-circle mr-2"></i>{{ detail?.descriptionMd }}
-                    </div>
+                    <div class="text-sm whitespace-pre-line text-color-secondary p-3 bg-surface-50 dark:bg-surface-900 border-round"><i class="pi pi-info-circle mr-2"></i>{{ detail?.descriptionMd }}</div>
                 </div>
             </div>
         </div>
@@ -1003,10 +959,18 @@ const pendingSubmissionTag = computed(() => {
                         <h3 class="text-lg font-semibold m-0">参赛成员</h3>
                     </div>
                     <div class="flex gap-2 flex-wrap">
-                        <AutoComplete v-model="selectedParticipants" :suggestions="participantSearchResults"
-                            optionLabel="username" dataKey="id" :completeMethod="completeParticipantSearch" dropdown
-                            multiple :loading="participantSearchLoading" style="min-width: 20rem"
-                            placeholder="搜索用户名或邮箱">
+                        <AutoComplete
+                            v-model="selectedParticipants"
+                            :suggestions="participantSearchResults"
+                            optionLabel="username"
+                            dataKey="id"
+                            :completeMethod="completeParticipantSearch"
+                            dropdown
+                            multiple
+                            :loading="participantSearchLoading"
+                            style="min-width: 20rem"
+                            placeholder="搜索用户名或邮箱"
+                        >
                             <template #option="{ option }">
                                 <div class="flex flex-column">
                                     <span class="font-medium">{{ participantOptionLabel(option) }}</span>
@@ -1017,8 +981,7 @@ const pendingSubmissionTag = computed(() => {
                                 <span>{{ participantOptionLabel(value) }}</span>
                             </template>
                         </AutoComplete>
-                        <Button label="添加" icon="pi pi-user-plus" size="small" :loading="participantSubmitting"
-                            @click="addParticipants" />
+                        <Button label="添加" icon="pi pi-user-plus" size="small" :loading="participantSubmitting" @click="addParticipants" />
                     </div>
                 </div>
                 <Divider class="my-3" />
@@ -1055,8 +1018,7 @@ const pendingSubmissionTag = computed(() => {
                     </Column>
                     <Column header="操作" style="width: 8rem">
                         <template #body="{ data }">
-                            <Button icon="pi pi-times" text rounded severity="danger" size="small" v-tooltip.top="'移除'"
-                                @click="removeParticipant(data.userId)" />
+                            <Button icon="pi pi-times" text rounded severity="danger" size="small" v-tooltip.top="'移除'" @click="removeParticipant(data.userId)" />
                         </template>
                     </Column>
                 </DataTable>
@@ -1070,20 +1032,25 @@ const pendingSubmissionTag = computed(() => {
                     <div class="flex items-center gap-2">
                         <i class="pi pi-user-edit text-xl text-primary"></i>
                         <h3 class="text-lg font-semibold m-0">报名审核</h3>
-                        <Tag v-if="detail?.pendingRegistrationCount" :value="`待审核 ${detail?.pendingRegistrationCount}`"
-                            severity="warning" />
+                        <Tag v-if="detail?.pendingRegistrationCount" :value="`待审核 ${detail?.pendingRegistrationCount}`" severity="warning" />
                     </div>
                     <div class="flex gap-2 flex-wrap">
-                        <Dropdown v-model="registrationStatusFilter" :options="registrationStatusOptionsItems"
-                            optionLabel="label" optionValue="value" placeholder="全部状态" size="small" :showClear="true" />
-                        <Button icon="pi pi-refresh" text rounded size="small" :loading="registrationsLoading"
-                            @click="loadRegistrations" />
+                        <Dropdown v-model="registrationStatusFilter" :options="registrationStatusOptionsItems" optionLabel="label" optionValue="value" placeholder="全部状态" size="small" :showClear="true" />
+                        <Button icon="pi pi-refresh" text rounded size="small" :loading="registrationsLoading" @click="loadRegistrations" />
                     </div>
                 </div>
                 <div class="flex gap-2 flex-wrap mb-3">
-                    <AutoComplete v-model="registrationInviteOption" :suggestions="registrationInviteSuggestions"
-                        dropdown optionLabel="username" dataKey="id" :completeMethod="completeRegistrationInviteSearch"
-                        :loading="registrationInviteLoading" placeholder="搜索用户以创建报名" style="min-width: 20rem">
+                    <AutoComplete
+                        v-model="registrationInviteOption"
+                        :suggestions="registrationInviteSuggestions"
+                        dropdown
+                        optionLabel="username"
+                        dataKey="id"
+                        :completeMethod="completeRegistrationInviteSearch"
+                        :loading="registrationInviteLoading"
+                        placeholder="搜索用户以创建报名"
+                        style="min-width: 20rem"
+                    >
                         <template #option="{ option }">
                             <div class="flex flex-column">
                                 <span class="font-medium">{{ participantOptionLabel(option) }}</span>
@@ -1091,8 +1058,7 @@ const pendingSubmissionTag = computed(() => {
                             </div>
                         </template>
                     </AutoComplete>
-                    <Button label="创建报名" icon="pi pi-user-plus" size="small" :loading="creatingRegistration"
-                        :disabled="!registrationInviteOption" @click="createRegistrationInvite" />
+                    <Button label="创建报名" icon="pi pi-user-plus" size="small" :loading="creatingRegistration" :disabled="!registrationInviteOption" @click="createRegistrationInvite" />
                 </div>
                 <div class="text-sm text-color-secondary mb-3">
                     报名窗口：
@@ -1105,9 +1071,19 @@ const pendingSubmissionTag = computed(() => {
                     </span>
                 </div>
                 <Divider class="my-3" />
-                <DataTable :value="registrations" :loading="registrationsLoading" dataKey="id" :rows="registrationSize"
-                    :paginator="true" :lazy="true" :totalRecords="registrationTotal" :rowsPerPageOptions="[10, 20, 50]"
-                    @page="onRegistrationPageChange" responsiveLayout="stack" stripedRows>
+                <DataTable
+                    :value="registrations"
+                    :loading="registrationsLoading"
+                    dataKey="id"
+                    :rows="registrationSize"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="registrationTotal"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    @page="onRegistrationPageChange"
+                    responsiveLayout="stack"
+                    stripedRows
+                >
                     <template #empty>
                         <NEmpty description="暂无报名记录" class="py-6">
                             <template #icon>
@@ -1130,8 +1106,7 @@ const pendingSubmissionTag = computed(() => {
                     </Column>
                     <Column field="status" header="状态">
                         <template #body="{ data }">
-                            <Tag :value="registrationStatusLabel(data.status)"
-                                :severity="registrationStatusSeverity(data.status)" />
+                            <Tag :value="registrationStatusLabel(data.status)" :severity="registrationStatusSeverity(data.status)" />
                         </template>
                     </Column>
                     <Column field="source" header="来源">
@@ -1148,23 +1123,28 @@ const pendingSubmissionTag = computed(() => {
                         <template #body="{ data }">
                             <div class="flex flex-column">
                                 <span class="text-color-secondary text-sm">{{ formatDate(data.reviewedAt) }}</span>
-                                <small v-if="data.reviewerName" class="text-color-tertiary">{{
-                                    data.reviewerName }}</small>
+                                <small v-if="data.reviewerName" class="text-color-tertiary">{{ data.reviewerName }}</small>
                             </div>
                         </template>
                     </Column>
                     <Column header="操作" style="width: 10rem">
                         <template #body="{ data }">
-                            <SplitButton v-if="data.status === 'pending'" label="通过" icon="pi pi-check"
-                                severity="success" size="small" :model="[
+                            <SplitButton
+                                v-if="data.status === 'pending'"
+                                label="通过"
+                                icon="pi pi-check"
+                                severity="success"
+                                size="small"
+                                :model="[
                                     {
                                         label: '驳回报名',
                                         icon: 'pi pi-times',
                                         command: () => rejectRegistration(data)
                                     }
-                                ]" @click="approveRegistration(data)" />
-                            <Tag v-else :value="registrationStatusLabel(data.status)"
-                                :severity="registrationStatusSeverity(data.status)" />
+                                ]"
+                                @click="approveRegistration(data)"
+                            />
+                            <Tag v-else :value="registrationStatusLabel(data.status)" :severity="registrationStatusSeverity(data.status)" />
                         </template>
                     </Column>
                 </DataTable>
@@ -1185,8 +1165,7 @@ const pendingSubmissionTag = computed(() => {
 
                 <div class="flex flex-wrap gap-2 mb-3">
                     <Tag :value="penaltyTag" severity="info" />
-                    <Tag v-if="freezeStatusTag" :value="freezeStatusTag"
-                        :severity="scoreboard?.freezeActive ? 'warning' : 'secondary'" />
+                    <Tag v-if="freezeStatusTag" :value="freezeStatusTag" :severity="scoreboard?.freezeActive ? 'warning' : 'secondary'" />
                     <Tag v-if="pendingSubmissionTag" :value="pendingSubmissionTag" severity="danger" />
                 </div>
 
@@ -1257,8 +1236,7 @@ const pendingSubmissionTag = computed(() => {
                         <Column header="题目表现" style="min-width: 20rem">
                             <template #body="{ data }">
                                 <div class="flex flex-wrap gap-2">
-                                    <Tag v-for="record in data.records" :key="record.problemId"
-                                        :value="formatRecord(record)" :severity="recordSeverity(record)" />
+                                    <Tag v-for="record in data.records" :key="record.problemId" :value="formatRecord(record)" :severity="recordSeverity(record)" />
                                 </div>
                             </template>
                         </Column>
@@ -1276,19 +1254,26 @@ const pendingSubmissionTag = computed(() => {
                         <h3 class="text-lg font-semibold m-0">实时提交</h3>
                     </div>
                     <div class="flex gap-2 flex-wrap items-end">
-                        <Dropdown v-model="verdictFilter" :options="verdictOptions" placeholder="评测结果" :showClear="true"
-                            size="small" />
-                        <InputNumber v-model="userFilter" placeholder="用户ID" :min="1" inputId="submission-user"
-                            size="small" style="width: 10rem" />
-                        <InputNumber v-model="problemFilter" placeholder="题目ID" :min="1" inputId="submission-problem"
-                            size="small" style="width: 10rem" />
+                        <Dropdown v-model="verdictFilter" :options="verdictOptions" placeholder="评测结果" :showClear="true" size="small" />
+                        <InputNumber v-model="userFilter" placeholder="用户ID" :min="1" inputId="submission-user" size="small" style="width: 10rem" />
+                        <InputNumber v-model="problemFilter" placeholder="题目ID" :min="1" inputId="submission-problem" size="small" style="width: 10rem" />
                         <Button icon="pi pi-refresh" rounded text v-tooltip.top="'刷新'" @click="loadSubmissions" />
                     </div>
                 </div>
                 <Divider class="my-3" />
-                <DataTable :value="submissions" :loading="submissionsLoading" dataKey="id" :rows="submissionSize"
-                    :paginator="true" :lazy="true" :totalRecords="submissionTotal" :rowsPerPageOptions="[10, 20, 50]"
-                    @page="onSubmissionPageChange" responsiveLayout="stack" stripedRows>
+                <DataTable
+                    :value="submissions"
+                    :loading="submissionsLoading"
+                    dataKey="id"
+                    :rows="submissionSize"
+                    :paginator="true"
+                    :lazy="true"
+                    :totalRecords="submissionTotal"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    @page="onSubmissionPageChange"
+                    responsiveLayout="stack"
+                    stripedRows
+                >
                     <template #empty>
                         <NEmpty description="暂无提交记录" class="py-6">
                             <template #icon>
@@ -1319,8 +1304,7 @@ const pendingSubmissionTag = computed(() => {
                     </Column>
                     <Column field="verdict" header="判题" style="min-width: 8rem">
                         <template #body="{ data }">
-                            <Tag :value="verdictLabel(data.verdict)"
-                                :severity="data.verdict === 'AC' ? 'success' : data.verdict === 'PD' ? 'info' : 'danger'" />
+                            <Tag :value="verdictLabel(data.verdict)" :severity="data.verdict === 'AC' ? 'success' : data.verdict === 'PD' ? 'info' : 'danger'" />
                         </template>
                     </Column>
                     <Column field="score" header="得分" style="width: 6rem">
@@ -1350,8 +1334,7 @@ const pendingSubmissionTag = computed(() => {
         </div>
     </div>
 
-    <Dialog v-model:visible="editDialogVisible" header="编辑比赛信息" :modal="true" :style="{ width: '42rem' }"
-        :closable="!editSubmitting" @hide="closeEditDialog">
+    <Dialog v-model:visible="editDialogVisible" header="编辑比赛信息" :modal="true" :style="{ width: '42rem' }" :closable="!editSubmitting" @hide="closeEditDialog">
         <div class="flex flex-col gap-4">
             <!-- 比赛标题 -->
             <div class="flex flex-col gap-2">
@@ -1363,15 +1346,20 @@ const pendingSubmissionTag = computed(() => {
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex flex-col gap-2 w-full">
                     <label for="edit-kind">赛制类型</label>
-                    <Dropdown id="edit-kind" v-model="editForm.kind" :options="options?.kinds ?? []"
-                        optionLabel="displayName" optionValue="code" placeholder="选择赛制" />
+                    <Dropdown id="edit-kind" v-model="editForm.kind" :options="options?.kinds ?? []" optionLabel="displayName" optionValue="code" placeholder="选择赛制" />
                 </div>
                 <div class="flex flex-col gap-2 w-full">
                     <label for="edit-visible">公开状态</label>
-                    <SelectButton id="edit-visible" v-model="editForm.visible" :options="[
-                        { label: '公开', value: true },
-                        { label: '私有', value: false }
-                    ]" optionLabel="label" optionValue="value" />
+                    <SelectButton
+                        id="edit-visible"
+                        v-model="editForm.visible"
+                        :options="[
+                            { label: '公开', value: true },
+                            { label: '私有', value: false }
+                        ]"
+                        optionLabel="label"
+                        optionValue="value"
+                    />
                 </div>
             </div>
 
@@ -1379,21 +1367,18 @@ const pendingSubmissionTag = computed(() => {
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex flex-col gap-2 w-full">
                     <label for="edit-start">开始时间</label>
-                    <Calendar id="edit-start" v-model="editForm.startTime" showIcon showTime hourFormat="24"
-                        placeholder="选择开始时间" />
+                    <Calendar id="edit-start" v-model="editForm.startTime" showIcon showTime hourFormat="24" placeholder="选择开始时间" />
                 </div>
                 <div class="flex flex-col gap-2 w-full">
                     <label for="edit-end">结束时间</label>
-                    <Calendar id="edit-end" v-model="editForm.endTime" showIcon showTime hourFormat="24"
-                        placeholder="选择结束时间" />
+                    <Calendar id="edit-end" v-model="editForm.endTime" showIcon showTime hourFormat="24" placeholder="选择结束时间" />
                 </div>
             </div>
 
             <!-- 比赛简介 -->
             <div class="flex flex-col gap-2">
                 <label for="edit-description">比赛简介 (可选)</label>
-                <Textarea id="edit-description" v-model="editForm.descriptionMd" rows="4" autoResize
-                    placeholder="请输入比赛简介..." />
+                <Textarea id="edit-description" v-model="editForm.descriptionMd" rows="4" autoResize placeholder="请输入比赛简介..." />
             </div>
         </div>
         <template #footer>
@@ -1404,8 +1389,7 @@ const pendingSubmissionTag = computed(() => {
         </template>
     </Dialog>
 
-    <Dialog v-model:visible="problemDialogVisible" header="配置比赛题目" :modal="true" :style="{ width: '56rem' }"
-        :closable="!problemSubmitting" @hide="closeProblemDialog">
+    <Dialog v-model:visible="problemDialogVisible" header="配置比赛题目" :modal="true" :style="{ width: '56rem' }" :closable="!problemSubmitting" @hide="closeProblemDialog">
         <div class="flex flex-col gap-4">
             <!-- 说明和添加按钮 -->
             <div class="flex justify-between items-center">
@@ -1418,24 +1402,30 @@ const pendingSubmissionTag = computed(() => {
 
             <!-- 题目列表 -->
             <div class="flex flex-col gap-3">
-                <div v-for="(item, index) in problemDraft" :key="index"
-                    class="p-4 border-1 surface-border border-round">
+                <div v-for="(item, index) in problemDraft" :key="index" class="p-4 border-1 surface-border border-round">
                     <div class="flex justify-between items-center mb-3">
                         <span class="font-medium text-color-secondary">题目 #{{ index + 1 }}</span>
-                        <Button icon="pi pi-trash" text rounded severity="danger" size="small"
-                            @click="removeProblemRow(index)" />
+                        <Button icon="pi pi-trash" text rounded severity="danger" size="small" @click="removeProblemRow(index)" />
                     </div>
 
                     <!-- 题目ID和别名 -->
                     <div class="flex flex-col md:flex-row gap-4 mb-3">
                         <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-search-${index}`">题目搜索</label>
-                            <AutoComplete v-if="problemDraft[index]" :id="`problem-search-${index}`"
-                                v-model="problemDraft[index].option" :suggestions="problemSuggestions"
-                                optionLabel="title" dataKey="id" dropdown :loading="problemSearchLoading"
-                                :completeMethod="completeProblemSearch" placeholder="输入标题或别名关键词"
+                            <AutoComplete
+                                v-if="problemDraft[index]"
+                                :id="`problem-search-${index}`"
+                                v-model="problemDraft[index].option"
+                                :suggestions="problemSuggestions"
+                                optionLabel="title"
+                                dataKey="id"
+                                dropdown
+                                :loading="problemSearchLoading"
+                                :completeMethod="completeProblemSearch"
+                                placeholder="输入标题或别名关键词"
                                 @item-select="({ value }) => handleProblemSelect(value, index)"
-                                @clear="clearProblemSelection(index)">
+                                @clear="clearProblemSelection(index)"
+                            >
                                 <template #option="{ option }">
                                     <div class="flex flex-column">
                                         <span class="font-medium">{{ problemOptionLabel(option) }}</span>
@@ -1450,8 +1440,7 @@ const pendingSubmissionTag = computed(() => {
                         </div>
                         <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-id-${index}`">题目ID <span class="text-red-500">*</span></label>
-                            <InputNumber :id="`problem-id-${index}`" v-model="item.problemId" :useGrouping="false"
-                                :min="1" placeholder="输入题目ID" />
+                            <InputNumber :id="`problem-id-${index}`" v-model="item.problemId" :useGrouping="false" :min="1" placeholder="输入题目ID" />
                         </div>
                     </div>
 
@@ -1459,13 +1448,11 @@ const pendingSubmissionTag = computed(() => {
                     <div class="flex flex-col md:flex-row gap-4">
                         <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-alias-${index}`">别名 (可选)</label>
-                            <InputText :id="`problem-alias-${index}`" v-model="item.alias"
-                                placeholder="例如：A, B, C 或自定义" />
+                            <InputText :id="`problem-alias-${index}`" v-model="item.alias" placeholder="例如：A, B, C 或自定义" />
                         </div>
                         <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-points-${index}`">分值</label>
-                            <InputNumber :id="`problem-points-${index}`" v-model="item.points" :useGrouping="false"
-                                :min="0" placeholder="题目分值" />
+                            <InputNumber :id="`problem-points-${index}`" v-model="item.points" :useGrouping="false" :min="0" placeholder="题目分值" />
                             <small class="text-color-secondary">留空表示不计分</small>
                         </div>
                     </div>
@@ -1473,8 +1460,7 @@ const pendingSubmissionTag = computed(() => {
                     <div class="flex flex-col md:flex-row gap-4">
                         <div class="flex flex-col gap-2 w-full">
                             <label :for="`problem-order-${index}`">排序值</label>
-                            <InputNumber :id="`problem-order-${index}`" v-model="item.orderNo" :useGrouping="false"
-                                placeholder="排序权重" />
+                            <InputNumber :id="`problem-order-${index}`" v-model="item.orderNo" :useGrouping="false" placeholder="排序权重" />
                             <small class="text-color-secondary">数值越小越靠前</small>
                         </div>
                     </div>

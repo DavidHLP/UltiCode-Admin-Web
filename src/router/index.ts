@@ -2,18 +2,16 @@ import AppLayout from '@/layout/AppLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 
-// ==================== 仪表盘路由 ====================
 const dashboardRoute: RouteRecordRaw = {
     path: '',
     name: 'dashboard',
-    component: () => import('@/views/Dashboard.vue'),
+    component: () => import('@/views/dashboard/Dashboard.vue'),
     meta: {
         requiresAuth: true,
         breadcrumb: [{ label: '仪表盘' }]
     }
 };
 
-// ==================== 权限管理路由 ====================
 const accountRoutes: RouteRecordRaw[] = [
     {
         path: '/account/users',
@@ -66,7 +64,6 @@ const securityRoutes: RouteRecordRaw[] = [
     }
 ];
 
-// ==================== 题库管理路由 ====================
 const problemRoutes: RouteRecordRaw[] = [
     {
         path: '/problems',
@@ -89,12 +86,7 @@ const problemRoutes: RouteRecordRaw[] = [
                 component: () => import('@/views/admin/problem-editor/ProblemEditorBasics.vue'),
                 meta: {
                     requiresAuth: true,
-                    breadcrumb: [
-                        { label: '题库管理' },
-                        { label: '题目列表', to: '/problems' },
-                        { label: '新建题目' },
-                        { label: '基本信息' }
-                    ]
+                    breadcrumb: [{ label: '题库管理' }, { label: '题目列表', to: '/problems' }, { label: '新建题目' }, { label: '基本信息' }]
                 }
             },
             {
@@ -103,12 +95,7 @@ const problemRoutes: RouteRecordRaw[] = [
                 component: () => import('@/views/admin/problem-editor/ProblemEditorStatements.vue'),
                 meta: {
                     requiresAuth: true,
-                    breadcrumb: [
-                        { label: '题库管理' },
-                        { label: '题目列表', to: '/problems' },
-                        { label: '新建题目' },
-                        { label: '题面内容' }
-                    ]
+                    breadcrumb: [{ label: '题库管理' }, { label: '题目列表', to: '/problems' }, { label: '新建题目' }, { label: '题面内容' }]
                 }
             },
             {
@@ -118,12 +105,7 @@ const problemRoutes: RouteRecordRaw[] = [
                 alias: ['datasets'],
                 meta: {
                     requiresAuth: true,
-                    breadcrumb: [
-                        { label: '题库管理' },
-                        { label: '题目列表', to: '/problems' },
-                        { label: '新建题目' },
-                        { label: '判题配置' }
-                    ]
+                    breadcrumb: [{ label: '题库管理' }, { label: '题目列表', to: '/problems' }, { label: '新建题目' }, { label: '判题配置' }]
                 }
             }
         ]
@@ -166,7 +148,6 @@ const problemRoutes: RouteRecordRaw[] = [
     }
 ];
 
-// ==================== 竞赛管理路由 ====================
 const contestRoutes: RouteRecordRaw[] = [
     {
         path: '/contests',
@@ -184,16 +165,11 @@ const contestRoutes: RouteRecordRaw[] = [
         props: true,
         meta: {
             requiresAuth: true,
-            breadcrumb: [
-                { label: '竞赛管理' },
-                { label: '比赛列表', to: '/contests' },
-                { label: '比赛详情' }
-            ]
+            breadcrumb: [{ label: '竞赛管理' }, { label: '比赛列表', to: '/contests' }, { label: '比赛详情' }]
         }
     }
 ];
 
-// ==================== 社区互动路由 ====================
 const interactionRoutes: RouteRecordRaw[] = [
     {
         path: '/interaction/comments',
@@ -242,7 +218,6 @@ const interactionRoutes: RouteRecordRaw[] = [
     }
 ];
 
-// ==================== 评测调度路由 ====================
 const judgeRoutes: RouteRecordRaw[] = [
     {
         path: '/judge/monitor',
@@ -255,12 +230,11 @@ const judgeRoutes: RouteRecordRaw[] = [
     }
 ];
 
-// ==================== 认证相关路由 ====================
 const authRoutes: RouteRecordRaw[] = [
     {
         path: '/auth/login',
         name: 'login',
-        component: () => import('@/views/pages/auth/Login.vue'),
+        component: () => import('@/views/auth/Login.vue'),
         meta: {
             guestOnly: true,
             breadcrumb: [{ label: '登录' }]
@@ -269,7 +243,7 @@ const authRoutes: RouteRecordRaw[] = [
     {
         path: '/auth/register',
         name: 'register',
-        component: () => import('@/views/pages/auth/Register.vue'),
+        component: () => import('@/views/auth/Register.vue'),
         meta: {
             guestOnly: true,
             breadcrumb: [{ label: '注册' }]
@@ -278,7 +252,7 @@ const authRoutes: RouteRecordRaw[] = [
     {
         path: '/auth/forgot-password',
         name: 'forgotPassword',
-        component: () => import('@/views/pages/auth/ForgotPassword.vue'),
+        component: () => import('@/views/auth/ForgotPassword.vue'),
         meta: {
             guestOnly: true,
             breadcrumb: [{ label: '忘记密码' }]
@@ -287,7 +261,7 @@ const authRoutes: RouteRecordRaw[] = [
     {
         path: '/auth/error',
         name: 'error',
-        component: () => import('@/views/pages/auth/Error.vue'),
+        component: () => import('@/views/auth/Error.vue'),
         meta: {
             breadcrumb: [{ label: '错误' }]
         }
@@ -295,23 +269,14 @@ const authRoutes: RouteRecordRaw[] = [
     {
         path: '/auth/access',
         name: 'accessDenied',
-        component: () => import('@/views/pages/auth/Access.vue'),
+        component: () => import('@/views/auth/Access.vue'),
         meta: {
             breadcrumb: [{ label: '访问被拒绝' }]
         }
     }
 ];
 
-// ==================== 主应用路由结构 ====================
-const adminChildren: RouteRecordRaw[] = [
-    dashboardRoute,
-    ...accountRoutes,
-    ...securityRoutes,
-    ...problemRoutes,
-    ...contestRoutes,
-    ...interactionRoutes,
-    ...judgeRoutes
-];
+const adminChildren: RouteRecordRaw[] = [dashboardRoute, ...accountRoutes, ...securityRoutes, ...problemRoutes, ...contestRoutes, ...interactionRoutes, ...judgeRoutes];
 
 const routes: RouteRecordRaw[] = [
     {
@@ -334,7 +299,6 @@ const router = createRouter({
     routes
 });
 
-// ==================== 路由守卫 ====================
 router.beforeEach(async (to, _from, next) => {
     const authStore = useAuthStore();
 
