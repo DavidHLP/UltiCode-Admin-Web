@@ -18,6 +18,12 @@ export interface AuditLogQuery {
     size?: number;
     action?: string;
     keyword?: string;
+    actorId?: number;
+    actorUsername?: string;
+    objectType?: string;
+    objectId?: string;
+    createdAtStart?: string;
+    createdAtEnd?: string;
 }
 
 export type AuditLogPage = PageResult<AuditLogView>;
