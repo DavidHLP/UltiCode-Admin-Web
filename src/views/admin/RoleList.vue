@@ -1,7 +1,20 @@
 <script setup lang="ts">
-import { createRole, deleteRole, fetchRoleList, fetchRolePermissionOptions, updateRole, type PermissionDto, type RoleCreatePayload, type RoleUpdatePayload, type RoleView } from '@/api/admin/role';
+import {
+    createRole,
+    deleteRole,
+    fetchRoleList,
+    fetchRolePermissionOptions,
+    updateRole,
+    type PermissionDto,
+    type RoleCreatePayload,
+    type RoleQuery,
+    type RoleUpdatePayload,
+    type RoleView
+} from '@/api/admin/role';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import type { DataTableFilterMetaData, DataTableOperatorFilterMetaData } from 'primevue/datatable';
 import { useToast } from 'primevue/usetoast';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 interface RoleForm {
     code: string;
@@ -11,7 +24,12 @@ interface RoleForm {
 }
 
 const roles = ref<RoleView[]>([]);
-const keyword = ref('');
+const total = ref(0);
+const page = ref(1);
+const size = ref(10);
+type FilterValue = DataTableFilterMetaData | DataTableOperatorFilterMetaData;
+type FiltersState = Record<string, FilterValue>;
+const filters = ref<FiltersState>(createEmptyFilters());
 const loading = ref(false);
 const permissionLoading = ref(false);
 const dialogVisible = ref(false);
@@ -34,17 +52,159 @@ const permissionOptions = computed(() =>
     }))
 );
 
-onMounted(() => {
-    loadPermissionOptions();
-    loadRoles();
+let abortController: AbortController | null = null;
+let debounceTimer: NodeJS.Timeout | null = null;
+let skipFilterWatch = false;
+
+function createEmptyFilters(): FiltersState {
+    const textFilter = (): DataTableOperatorFilterMetaData => ({
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
+    });
+
+    return {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        code: textFilter(),
+        name: textFilter(),
+        remark: textFilter(),
+        permissionIds: { value: [], matchMode: FilterMatchMode.IN }
+    };
+}
+
+function isOperatorFilterMeta(
+    meta: FilterValue | undefined
+): meta is DataTableOperatorFilterMetaData {
+    return !!meta && typeof meta === 'object' && 'constraints' in meta;
+}
+
+function resolveRawFilterValue(field: string): unknown {
+    const meta = filters.value[field];
+    if (!meta) {
+        return undefined;
+    }
+    if (isOperatorFilterMeta(meta)) {
+        const [constraint] = meta.constraints ?? [];
+        return constraint?.value;
+    }
+    return meta.value;
+}
+
+function resolveStringFilter(field: string): string | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (typeof raw !== 'string') {
+        return undefined;
+    }
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function resolveNumberArrayFilter(field: string): number[] | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (!Array.isArray(raw)) {
+        if (raw === null || raw === undefined || raw === '') {
+            return undefined;
+        }
+        const parsed = Number(raw);
+        return Number.isNaN(parsed) ? undefined : [parsed];
+    }
+    const values = raw
+        .map((item) => {
+            if (item === null || item === undefined || item === '') {
+                return null;
+            }
+            const parsed = Number(item);
+            return Number.isNaN(parsed) ? null : parsed;
+        })
+        .filter((item): item is number => item !== null);
+    return values.length > 0 ? values : undefined;
+}
+
+function buildQueryFromFilters(): RoleQuery {
+    const query: RoleQuery = {
+        page: page.value,
+        size: size.value
+    };
+    const globalKeyword = resolveStringFilter('global');
+    if (globalKeyword) {
+        query.keyword = globalKeyword;
+    }
+    const codeFilter = resolveStringFilter('code');
+    if (codeFilter) {
+        query.code = codeFilter;
+    }
+    const nameFilter = resolveStringFilter('name');
+    if (nameFilter) {
+        query.name = nameFilter;
+    }
+    const remarkFilter = resolveStringFilter('remark');
+    if (remarkFilter) {
+        query.remark = remarkFilter;
+    }
+    const permissionFilter = resolveNumberArrayFilter('permissionIds');
+    if (permissionFilter && permissionFilter.length > 0) {
+        query.permissionIds = permissionFilter;
+    }
+    return query;
+}
+
+watch(
+    filters,
+    () => {
+        if (skipFilterWatch) {
+            return;
+        }
+        debouncedSearch();
+    },
+    { deep: true }
+);
+
+onMounted(async () => {
+    await loadPermissionOptions();
+    await loadRoles();
 });
 
+onUnmounted(() => {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    if (abortController) {
+        abortController.abort();
+    }
+});
+
+function debouncedSearch() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+        page.value = 1;
+        loadRoles();
+    }, 300);
+}
+
 async function loadRoles() {
+    if (abortController) {
+        abortController.abort();
+    }
+    const controller = new AbortController();
+    abortController = controller;
+
     loading.value = true;
     try {
-        const query = keyword.value.trim();
-        roles.value = await fetchRoleList(query ? { keyword: query } : undefined);
+        const query = buildQueryFromFilters();
+        const data = await fetchRoleList(query, controller.signal);
+        roles.value = data.items ?? [];
+        total.value = data.total ?? 0;
+        if (data.page !== undefined && Number(data.page) !== page.value) {
+            page.value = Number(data.page);
+        }
+        if (data.size !== undefined && Number(data.size) !== size.value) {
+            size.value = Number(data.size);
+        }
     } catch (error) {
+        if ((error as any)?.name === 'AbortError' || (error as any)?.name === 'CanceledError') {
+            return;
+        }
         toast.add({
             severity: 'error',
             summary: '加载失败',
@@ -52,7 +212,10 @@ async function loadRoles() {
             life: 4000
         });
     } finally {
-        loading.value = false;
+        if (abortController === controller) {
+            loading.value = false;
+            abortController = null;
+        }
     }
 }
 
@@ -72,13 +235,19 @@ async function loadPermissionOptions() {
     }
 }
 
-function onSearch() {
-    loadRoles();
-}
-
-function clearFilters() {
-    keyword.value = '';
-    loadRoles();
+async function clearFilters() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
+    skipFilterWatch = true;
+    filters.value = createEmptyFilters();
+    page.value = 1;
+    try {
+        await loadRoles();
+    } finally {
+        skipFilterWatch = false;
+    }
 }
 
 function openCreate() {
@@ -168,6 +337,12 @@ async function removeRole(role: RoleView) {
     }
 }
 
+function onPageChange(event: { page: number; rows: number }) {
+    page.value = event.page + 1;
+    size.value = event.rows;
+    loadRoles();
+}
+
 function formatDate(value?: string | null) {
     if (!value) {
         return '-';
@@ -191,31 +366,77 @@ function formatDate(value?: string | null) {
     <div class="grid">
         <div class="col-12">
             <div class="card">
-                <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
-                    <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索角色编码或名称" @keyup.enter="onSearch" style="min-width: 18rem" />
-                    </div>
-                    <div class="flex gap-2 flex-wrap">
-                        <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
-                        <Button label="重置" icon="pi pi-refresh" severity="secondary" @click="clearFilters" />
-                        <Button label="新建角色" icon="pi pi-plus" severity="success" @click="openCreate" />
-                    </div>
-                </div>
-
-                <DataTable :value="roles" dataKey="id" :loading="loading" responsiveLayout="scroll">
-                    <Column field="code" header="角色编码" style="min-width: 10rem" />
-                    <Column field="name" header="角色名称" style="min-width: 10rem" />
-                    <Column field="remark" header="备注" style="min-width: 14rem">
+                <DataTable
+                    :value="roles"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    v-model:filters="filters"
+                    filterDisplay="menu"
+                    :globalFilterFields="['code', 'name', 'remark']"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`"
+                    @page="onPageChange"
+                    responsiveLayout="scroll"
+                    showGridlines
+                >
+                    <template #header>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <Button type="button" label="重置" icon="pi pi-filter-slash" outlined @click="clearFilters" />
+                                <IconField>
+                                    <InputIcon>
+                                        <i class="pi pi-search" />
+                                    </InputIcon>
+                                    <InputText
+                                        v-model="(filters['global'] as DataTableFilterMetaData).value"
+                                        placeholder="搜索角色编码或名称"
+                                    />
+                                </IconField>
+                            </div>
+                            <Button label="新建角色" icon="pi pi-plus" severity="success" @click="openCreate" />
+                        </div>
+                    </template>
+                    <Column field="code" header="角色编码" style="min-width: 10rem" :showFilterMatchModes="false">
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" placeholder="输入角色编码" class="w-full" />
+                        </template>
+                    </Column>
+                    <Column field="name" header="角色名称" style="min-width: 10rem" :showFilterMatchModes="false">
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" placeholder="输入角色名称" class="w-full" />
+                        </template>
+                    </Column>
+                    <Column field="remark" header="备注" style="min-width: 14rem" :showFilterMatchModes="false">
                         <template #body="{ data }">
                             {{ data.remark || '-' }}
                         </template>
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" placeholder="输入备注关键词" class="w-full" />
+                        </template>
                     </Column>
-                    <Column header="拥有权限" style="min-width: 18rem">
+                    <Column header="拥有权限" filterField="permissionIds" style="min-width: 18rem" :showFilterMatchModes="false" :filterMenuStyle="{ width: '18rem' }">
                         <template #body="{ data }">
                             <div v-if="data.permissions?.length" class="flex flex-wrap gap-2">
                                 <Tag v-for="permission in data.permissions" :key="permission.id" :value="permission.code" :title="permission.name" />
                             </div>
                             <span v-else>-</span>
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <MultiSelect
+                                v-model="filterModel.value"
+                                :options="permissionOptions"
+                                optionLabel="label"
+                                optionValue="id"
+                                placeholder="选择权限"
+                                display="chip"
+                                filter
+                                :loading="permissionLoading"
+                                class="w-full"
+                            />
                         </template>
                     </Column>
                     <Column field="createdAt" header="创建时间" style="min-width: 12rem">

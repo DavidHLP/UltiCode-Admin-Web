@@ -1,10 +1,26 @@
 <script setup lang="ts">
-import { createPermission, deletePermission, fetchPermissions, updatePermission, type PermissionCreatePayload, type PermissionUpdatePayload, type PermissionView } from '@/api/admin/permissions';
+import {
+    createPermission,
+    deletePermission,
+    fetchPermissions,
+    updatePermission,
+    type PermissionCreatePayload,
+    type PermissionQuery,
+    type PermissionUpdatePayload,
+    type PermissionView
+} from '@/api/admin/permissions';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import type { DataTableFilterMetaData, DataTableOperatorFilterMetaData } from 'primevue/datatable';
 import { useToast } from 'primevue/usetoast';
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 const permissions = ref<PermissionView[]>([]);
-const keyword = ref('');
+const total = ref(0);
+const page = ref(1);
+const size = ref(10);
+type FilterValue = DataTableFilterMetaData | DataTableOperatorFilterMetaData;
+type FiltersState = Record<string, FilterValue>;
+const filters = ref<FiltersState>(createEmptyFilters());
 const loading = ref(false);
 const dialogVisible = ref(false);
 const saving = ref(false);
@@ -13,16 +29,160 @@ const form = ref<PermissionCreatePayload>({ code: '', name: '' });
 
 const toast = useToast();
 
+let debounceTimer: NodeJS.Timeout | null = null;
+let abortController: AbortController | null = null;
+let skipFilterWatch = false;
+
+function createEmptyFilters(): FiltersState {
+    const textFilter = (): DataTableOperatorFilterMetaData => ({
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
+    });
+
+    return {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        code: textFilter(),
+        name: textFilter(),
+        createdAt: { value: null, matchMode: FilterMatchMode.BETWEEN }
+    };
+}
+
+function isOperatorFilter(meta: FilterValue | undefined): meta is DataTableOperatorFilterMetaData {
+    return !!meta && typeof meta === 'object' && 'constraints' in meta;
+}
+
+function resolveRawFilterValue(field: string): unknown {
+    const meta = filters.value[field];
+    if (!meta) {
+        return undefined;
+    }
+    if (isOperatorFilter(meta)) {
+        const [constraint] = meta.constraints ?? [];
+        return constraint?.value;
+    }
+    return meta.value;
+}
+
+function resolveStringFilter(field: string): string | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (typeof raw !== 'string') {
+        return undefined;
+    }
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function resolveDateRangeFilter(field: string): [string | undefined, string | undefined] | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (!Array.isArray(raw)) {
+        return undefined;
+    }
+    const [startRaw, endRaw] = raw;
+    const start = normalizeDateValue(startRaw);
+    const end = normalizeDateValue(endRaw);
+    if (!start && !end) {
+        return undefined;
+    }
+    return [start, end];
+}
+
+function normalizeDateValue(value: unknown): string | undefined {
+    if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+        return undefined;
+    }
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function buildQueryFromFilters(): PermissionQuery {
+    const query: PermissionQuery = {
+        page: page.value,
+        size: size.value
+    };
+    const globalKeyword = resolveStringFilter('global');
+    if (globalKeyword) {
+        query.keyword = globalKeyword;
+    }
+    const codeFilter = resolveStringFilter('code');
+    if (codeFilter) {
+        query.code = codeFilter;
+    }
+    const nameFilter = resolveStringFilter('name');
+    if (nameFilter) {
+        query.name = nameFilter;
+    }
+    const createdAtRange = resolveDateRangeFilter('createdAt');
+    if (createdAtRange) {
+        const [start, end] = createdAtRange;
+        if (start) {
+            query.createdAtStart = start;
+        }
+        if (end) {
+            query.createdAtEnd = end;
+        }
+    }
+    return query;
+}
+
+watch(
+    filters,
+    () => {
+        if (skipFilterWatch) {
+            return;
+        }
+        debouncedSearch();
+    },
+    { deep: true }
+);
+
 onMounted(() => {
     loadPermissions();
 });
 
+onUnmounted(() => {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    if (abortController) {
+        abortController.abort();
+    }
+});
+
+function debouncedSearch() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+        page.value = 1;
+        loadPermissions();
+    }, 300);
+}
+
 async function loadPermissions() {
+    if (abortController) {
+        abortController.abort();
+    }
+    const controller = new AbortController();
+    abortController = controller;
+
     loading.value = true;
     try {
-        const params = keyword.value.trim() ? { keyword: keyword.value.trim() } : undefined;
-        permissions.value = await fetchPermissions(params);
-    } catch (error) {
+        const query = buildQueryFromFilters();
+        const data = await fetchPermissions(query, controller.signal);
+        permissions.value = data.items ?? [];
+        total.value = data.total ?? 0;
+        if (data.page !== undefined && Number(data.page) !== page.value) {
+            page.value = Number(data.page);
+        }
+        if (data.size !== undefined && Number(data.size) !== size.value) {
+            size.value = Number(data.size);
+        }
+    } catch (error: any) {
+        if (error?.name === 'AbortError' || error?.name === 'CanceledError') {
+            return;
+        }
         toast.add({
             severity: 'error',
             summary: '加载失败',
@@ -30,7 +190,10 @@ async function loadPermissions() {
             life: 4000
         });
     } finally {
-        loading.value = false;
+        if (abortController === controller) {
+            loading.value = false;
+            abortController = null;
+        }
     }
 }
 
@@ -102,17 +265,27 @@ async function removePermission(item: PermissionView) {
             detail: (error as Error)?.message ?? '删除权限失败',
             life: 4000
         });
-    } finally {
-        /* noop */
     }
 }
 
-function onSearch() {
-    loadPermissions();
+async function clearFilters() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
+    skipFilterWatch = true;
+    filters.value = createEmptyFilters();
+    page.value = 1;
+    try {
+        await loadPermissions();
+    } finally {
+        skipFilterWatch = false;
+    }
 }
 
-function clearFilters() {
-    keyword.value = '';
+function onPageChange(event: { page: number; rows: number }) {
+    page.value = event.page + 1;
+    size.value = event.rows;
     loadPermissions();
 }
 
@@ -138,23 +311,63 @@ function formatDate(value?: string | null) {
     <div class="grid">
         <div class="col-12">
             <div class="card">
-                <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
-                    <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索权限编码或名称" @keyup.enter="onSearch" style="min-width: 18rem" />
-                    </div>
-                    <div class="flex gap-2 flex-wrap">
-                        <Button label="查询" icon="pi pi-search" @click="onSearch" />
-                        <Button label="重置" icon="pi pi-refresh" severity="secondary" @click="clearFilters" />
-                        <Button label="新建权限" icon="pi pi-plus" severity="success" @click="openCreate" />
-                    </div>
-                </div>
-
-                <DataTable :value="permissions" dataKey="id" :loading="loading" responsiveLayout="scroll">
-                    <Column field="code" header="权限编码" style="min-width: 12rem" />
-                    <Column field="name" header="权限名称" style="min-width: 12rem" />
+                <DataTable
+                    :value="permissions"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    v-model:filters="filters"
+                    filterDisplay="menu"
+                    :globalFilterFields="['code', 'name']"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`"
+                    @page="onPageChange"
+                    responsiveLayout="scroll"
+                    showGridlines
+                >
+                    <template #header>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <Button type="button" label="重置" icon="pi pi-filter-slash" outlined @click="clearFilters" />
+                                <IconField>
+                                    <InputIcon>
+                                        <i class="pi pi-search" />
+                                    </InputIcon>
+                                    <InputText
+                                        v-model="(filters['global'] as DataTableFilterMetaData).value"
+                                        placeholder="搜索权限编码或名称"
+                                    />
+                                </IconField>
+                            </div>
+                            <Button label="新建权限" icon="pi pi-plus" severity="success" @click="openCreate" />
+                        </div>
+                    </template>
+                    <Column field="code" header="权限编码" style="min-width: 12rem" :showFilterMatchModes="false">
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" placeholder="输入权限编码" class="w-full" />
+                        </template>
+                    </Column>
+                    <Column field="name" header="权限名称" style="min-width: 12rem" :showFilterMatchModes="false">
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" placeholder="输入权限名称" class="w-full" />
+                        </template>
+                    </Column>
                     <Column field="createdAt" header="创建时间" style="min-width: 12rem">
                         <template #body="{ data }">
                             {{ formatDate(data.createdAt) }}
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <DatePicker
+                                v-model="filterModel.value"
+                                selectionMode="range"
+                                dateFormat="yy-mm-dd"
+                                placeholder="选择日期范围"
+                                showIcon
+                                class="w-full"
+                            />
                         </template>
                     </Column>
                     <Column header="操作" style="min-width: 10rem">

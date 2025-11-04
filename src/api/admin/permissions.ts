@@ -1,3 +1,4 @@
+import type { PageResult } from '@/api/types';
 import { requestData } from '@/utils/request';
 
 export interface PermissionView {
@@ -8,7 +9,13 @@ export interface PermissionView {
 }
 
 export interface PermissionQuery {
+    page?: number;
+    size?: number;
     keyword?: string;
+    code?: string;
+    name?: string;
+    createdAtStart?: string;
+    createdAtEnd?: string;
 }
 
 export interface PermissionCreatePayload {
@@ -21,8 +28,10 @@ export interface PermissionUpdatePayload {
     name: string;
 }
 
+export type PermissionPage = PageResult<PermissionView>;
+
 export function fetchPermissions(params?: PermissionQuery, signal?: AbortSignal) {
-    return requestData<PermissionView[]>({
+    return requestData<PermissionPage>({
         url: '/api/admin/permissions',
         method: 'get',
         params,

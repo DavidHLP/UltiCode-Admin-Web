@@ -1,3 +1,4 @@
+import type { PageResult } from '@/api/types';
 import { requestData } from '@/utils/request';
 
 export interface PermissionDto {
@@ -20,7 +21,13 @@ export interface RoleView extends RoleDto {
 }
 
 export interface RoleQuery {
+    page?: number;
+    size?: number;
     keyword?: string;
+    code?: string;
+    name?: string;
+    remark?: string;
+    permissionIds?: number[];
 }
 
 export interface RoleCreatePayload {
@@ -37,8 +44,10 @@ export interface RoleUpdatePayload {
     permissionIds?: number[];
 }
 
+export type RolePage = PageResult<RoleView>;
+
 export function fetchRoleList(params?: RoleQuery, signal?: AbortSignal) {
-    return requestData<RoleView[]>({
+    return requestData<RolePage>({
         url: '/api/admin/roles',
         method: 'get',
         params,
