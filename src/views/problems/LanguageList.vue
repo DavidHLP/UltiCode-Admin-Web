@@ -1,7 +1,18 @@
 <script setup lang="ts">
-import { createLanguage, deleteLanguage, fetchLanguages, updateLanguage, type LanguageCreatePayload, type LanguageUpdatePayload, type LanguageView } from '@/api/problem/language.ts';
+import {
+    createLanguage,
+    deleteLanguage,
+    fetchLanguages,
+    updateLanguage,
+    type LanguageCreatePayload,
+    type LanguageQuery,
+    type LanguageUpdatePayload,
+    type LanguageView
+} from '@/api/problem/language.ts';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import type { DataTableFilterMetaData, DataTableOperatorFilterMetaData } from 'primevue/datatable';
 import { useToast } from 'primevue/usetoast';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 interface LanguageForm {
     code: string;
@@ -10,16 +21,18 @@ interface LanguageForm {
     isActive: boolean;
 }
 
+type FilterValue = DataTableFilterMetaData | DataTableOperatorFilterMetaData;
+type FiltersState = Record<string, FilterValue>;
+
 const languages = ref<LanguageView[]>([]);
-const keyword = ref('');
-const activeFilter = ref<boolean | null>(null);
+const total = ref(0);
+const page = ref(1);
+const size = ref(10);
+const filters = ref<FiltersState>(createEmptyFilters());
 const loading = ref(false);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const editingId = ref<number | null>(null);
-const total = ref(0);
-const page = ref(1);
-const size = ref(10);
 const toast = useToast();
 
 const form = ref<LanguageForm>({
@@ -29,37 +42,156 @@ const form = ref<LanguageForm>({
     isActive: true
 });
 
-const activeOptions = [
-    { label: '全部', value: null },
+const statusTagSeverity = computed(
+    () => (isActive: boolean) => (isActive ? 'success' : 'danger')
+);
+
+const statusFilterOptions = [
+    { label: '全部状态', value: null },
     { label: '启用', value: true },
     { label: '停用', value: false }
 ];
 
-const statusTagSeverity = computed(() => (isActive: boolean) => (isActive ? 'success' : 'danger'));
+let abortController: AbortController | null = null;
+let debounceTimer: NodeJS.Timeout | null = null;
+let skipFilterWatch = false;
+
+watch(
+    filters,
+    () => {
+        if (skipFilterWatch) {
+            return;
+        }
+        debouncedSearch();
+    },
+    { deep: true }
+);
 
 onMounted(() => {
     loadLanguages();
 });
 
+onUnmounted(() => {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    if (abortController) {
+        abortController.abort();
+    }
+});
+
+function createEmptyFilters(): FiltersState {
+    const textFilter = (): DataTableOperatorFilterMetaData => ({
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
+    });
+
+    return {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        code: textFilter(),
+        displayName: textFilter(),
+        isActive: { value: null, matchMode: FilterMatchMode.EQUALS }
+    };
+}
+
+function isOperatorFilterMeta(
+    meta: FilterValue | undefined
+): meta is DataTableOperatorFilterMetaData {
+    return !!meta && typeof meta === 'object' && 'constraints' in meta;
+}
+
+function resolveRawFilterValue(field: string): unknown {
+    const meta = filters.value[field];
+    if (!meta) {
+        return undefined;
+    }
+    if (isOperatorFilterMeta(meta)) {
+        const [constraint] = meta.constraints ?? [];
+        return constraint?.value;
+    }
+    return meta.value;
+}
+
+function resolveStringFilter(field: string): string | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (typeof raw !== 'string') {
+        return undefined;
+    }
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function resolveBooleanFilter(field: string): boolean | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (raw === null || raw === undefined || raw === '') {
+        return undefined;
+    }
+    if (typeof raw === 'string') {
+        if (raw === 'true') {
+            return true;
+        }
+        if (raw === 'false') {
+            return false;
+        }
+    }
+    return Boolean(raw);
+}
+
+function buildQueryFromFilters(): LanguageQuery {
+    const query: LanguageQuery = {
+        page: page.value,
+        size: size.value
+    };
+    const keyword = resolveStringFilter('global');
+    if (keyword) {
+        query.keyword = keyword;
+    }
+    const code = resolveStringFilter('code');
+    if (code) {
+        query.code = code;
+    }
+    const displayName = resolveStringFilter('displayName');
+    if (displayName) {
+        query.displayName = displayName;
+    }
+    const isActive = resolveBooleanFilter('isActive');
+    if (isActive !== undefined) {
+        query.isActive = isActive;
+    }
+    return query;
+}
+
+function debouncedSearch() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+        page.value = 1;
+        loadLanguages();
+    }, 300);
+}
+
 async function loadLanguages() {
+    if (abortController) {
+        abortController.abort();
+    }
+    const controller = new AbortController();
+    abortController = controller;
     loading.value = true;
     try {
-        const query = keyword.value.trim();
-        const data = await fetchLanguages({
-            keyword: query || undefined,
-            isActive: activeFilter.value ?? undefined,
-            page: page.value,
-            size: size.value
-        });
+        const data = await fetchLanguages(buildQueryFromFilters(), controller.signal);
         languages.value = data.items ?? [];
         total.value = data.total ?? 0;
-        if (typeof data.page === 'number') {
-            page.value = Math.max(1, Number(data.page));
+        if (data.page !== undefined && Number(data.page) !== page.value) {
+            page.value = Number(data.page);
         }
-        if (typeof data.size === 'number' && Number(data.size) > 0) {
+        if (data.size !== undefined && Number(data.size) !== size.value) {
             size.value = Number(data.size);
         }
-    } catch (error) {
+    } catch (error: any) {
+        if (error?.name === 'AbortError' || error?.name === 'CanceledError') {
+            return;
+        }
         toast.add({
             severity: 'error',
             summary: '加载失败',
@@ -67,20 +199,26 @@ async function loadLanguages() {
             life: 4000
         });
     } finally {
-        loading.value = false;
+        if (abortController === controller) {
+            loading.value = false;
+            abortController = null;
+        }
     }
 }
 
-function onSearch() {
+async function clearFilters() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
+    skipFilterWatch = true;
+    filters.value = createEmptyFilters();
     page.value = 1;
-    loadLanguages();
-}
-
-function clearFilters() {
-    keyword.value = '';
-    activeFilter.value = null;
-    page.value = 1;
-    loadLanguages();
+    try {
+        await loadLanguages();
+    } finally {
+        skipFilterWatch = false;
+    }
 }
 
 function openCreate() {
@@ -192,18 +330,6 @@ function onPageChange(event: { page: number; rows: number }) {
     <div class="grid">
         <div class="col-12">
             <div class="card">
-                <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
-                    <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="搜索语言编码或名称" @keyup.enter="onSearch" style="min-width: 18rem" />
-                        <Dropdown v-model="activeFilter" :options="activeOptions" optionLabel="label" optionValue="value" placeholder="启用状态" style="min-width: 10rem" />
-                    </div>
-                    <div class="flex gap-2 flex-wrap">
-                        <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
-                        <Button label="重置" icon="pi pi-refresh" severity="secondary" @click="clearFilters" />
-                        <Button label="新建语言" icon="pi pi-plus" severity="success" @click="openCreate" />
-                    </div>
-                </div>
-
                 <DataTable
                     :value="languages"
                     dataKey="id"
@@ -211,14 +337,43 @@ function onPageChange(event: { page: number; rows: number }) {
                     :rows="size"
                     :paginator="true"
                     :lazy="true"
+                    v-model:filters="filters"
+                    filterDisplay="menu"
+                    :globalFilterFields="['displayName', 'code']"
                     :totalRecords="total"
                     :rowsPerPageOptions="[10, 20, 50]"
-                    :first="(page - 1) * size"
-                    responsiveLayout="scroll"
+                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`"
                     @page="onPageChange"
+                    responsiveLayout="scroll"
+                    showGridlines
                 >
-                    <Column field="displayName" header="语言名称" style="min-width: 12rem" />
-                    <Column field="code" header="语言编码" style="min-width: 10rem" />
+                    <template #header>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <Button type="button" label="重置" icon="pi pi-filter-slash" outlined @click="clearFilters" />
+                                <IconField>
+                                    <InputIcon>
+                                        <i class="pi pi-search" />
+                                    </InputIcon>
+                                    <InputText
+                                        v-model="(filters['global'] as DataTableFilterMetaData).value"
+                                        placeholder="搜索语言编码或名称"
+                                    />
+                                </IconField>
+                            </div>
+                            <Button label="新建语言" icon="pi pi-plus" severity="success" @click="openCreate" />
+                        </div>
+                    </template>
+                    <Column field="displayName" header="语言名称" style="min-width: 12rem" :showFilterMatchModes="false">
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" placeholder="输入展示名称" class="w-full" />
+                        </template>
+                    </Column>
+                    <Column field="code" header="语言编码" style="min-width: 10rem" :showFilterMatchModes="false">
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" placeholder="输入语言编码" class="w-full" />
+                        </template>
+                    </Column>
                     <Column field="runtimeImage" header="运行镜像" style="min-width: 14rem">
                         <template #body="{ data }">
                             <span v-if="data.runtimeImage">
@@ -229,9 +384,20 @@ function onPageChange(event: { page: number; rows: number }) {
                             <span v-else>-</span>
                         </template>
                     </Column>
-                    <Column header="状态" style="min-width: 8rem">
+                    <Column field="isActive" header="状态" style="min-width: 8rem" :showFilterMatchModes="false">
                         <template #body="{ data }">
                             <Tag :value="data.isActive ? '启用' : '停用'" :severity="statusTagSeverity(data.isActive)" />
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown
+                                v-model="filterModel.value"
+                                :options="statusFilterOptions"
+                                optionLabel="label"
+                                optionValue="value"
+                                class="w-full"
+                                placeholder="全部状态"
+                                :showClear="true"
+                            />
                         </template>
                     </Column>
                     <Column header="操作" style="min-width: 10rem">

@@ -9,6 +9,8 @@ export interface CategoryView {
 
 export interface CategoryQuery {
     keyword?: string;
+    code?: string;
+    name?: string;
     page?: number;
     size?: number;
 }

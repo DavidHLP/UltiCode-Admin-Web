@@ -9,6 +9,9 @@ export interface DifficultyView {
 
 export interface DifficultyQuery {
     keyword?: string;
+    difficultyId?: number;
+    code?: string;
+    sortKey?: number;
     page?: number;
     size?: number;
 }

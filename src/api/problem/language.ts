@@ -11,6 +11,8 @@ export interface LanguageView {
 
 export interface LanguageQuery {
     keyword?: string;
+    code?: string;
+    displayName?: string;
     isActive?: boolean;
     page?: number;
     size?: number;

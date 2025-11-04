@@ -11,6 +11,8 @@ export interface TagView {
 
 export interface TagQuery {
     keyword?: string;
+    slug?: string;
+    name?: string;
     page?: number;
     size?: number;
 }
