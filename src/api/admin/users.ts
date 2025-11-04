@@ -20,8 +20,10 @@ export interface UserQuery {
     page?: number;
     size?: number;
     keyword?: string;
+    username?: string;
+    email?: string;
     status?: number | null;
-    roleId?: number | null;
+    roleIds?: number[];
 }
 
 export interface UserCreatePayload {

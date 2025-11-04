@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { fetchRoleOptions, type RoleDto } from '@/api/admin/role';
 import type { UserView } from '@/api/admin/users';
-import { createUser, fetchUsers, updateUser, type UserCreatePayload, type UserUpdatePayload } from '@/api/admin/users';
+import { createUser, fetchUsers, updateUser, type UserCreatePayload, type UserQuery, type UserUpdatePayload } from '@/api/admin/users';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import type { DataTableFilterMetaData, DataTableOperatorFilterMetaData } from 'primevue/datatable';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -19,9 +21,10 @@ const users = ref<UserView[]>([]);
 const total = ref(0);
 const page = ref(1);
 const size = ref(10);
-const keyword = ref('');
-const statusFilter = ref<number | null>(null);
-const roleFilter = ref<number | null>(null);
+type FilterValue = DataTableFilterMetaData | DataTableOperatorFilterMetaData;
+type FiltersState = Record<string, FilterValue>;
+
+const filters = ref<FiltersState>(createEmptyFilters());
 const loading = ref(false);
 const dialogVisible = ref(false);
 const saving = ref(false);
@@ -48,12 +51,121 @@ const statusOptions = [
     { label: '禁用', value: 0 }
 ];
 
+function createEmptyFilters(): FiltersState {
+    const textFilter = (): DataTableOperatorFilterMetaData => ({
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
+    });
+
+    return {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        username: textFilter(),
+        email: textFilter(),
+        status: { value: null, matchMode: FilterMatchMode.EQUALS },
+        roleIds: { value: [], matchMode: FilterMatchMode.IN }
+    };
+}
+
+function isOperatorFilterMeta(
+    meta: FilterValue | undefined
+): meta is DataTableOperatorFilterMetaData {
+    return !!meta && typeof meta === 'object' && 'constraints' in meta;
+}
+
+function resolveRawFilterValue(field: string): unknown {
+    const meta = filters.value[field];
+    if (!meta) {
+        return undefined;
+    }
+    if (isOperatorFilterMeta(meta)) {
+        const [constraint] = meta.constraints ?? [];
+        return constraint?.value;
+    }
+    return meta.value;
+}
+
+function resolveStringFilter(field: string): string | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (typeof raw !== 'string') {
+        return undefined;
+    }
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function resolveNumberFilter(field: string): number | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (raw === null || raw === undefined || raw === '') {
+        return undefined;
+    }
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+function resolveNumberArrayFilter(field: string): number[] | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (!Array.isArray(raw)) {
+        if (raw === null || raw === undefined || raw === '') {
+            return undefined;
+        }
+        const parsed = Number(raw);
+        return Number.isNaN(parsed) ? undefined : [parsed];
+    }
+    const values = raw
+        .map((item) => {
+            if (item === null || item === undefined || item === '') {
+                return null;
+            }
+            const parsed = Number(item);
+            return Number.isNaN(parsed) ? null : parsed;
+        })
+        .filter((item): item is number => item !== null);
+    return values.length > 0 ? values : undefined;
+}
+
+function buildQueryFromFilters(): UserQuery {
+    const query: UserQuery = {
+        page: page.value,
+        size: size.value
+    };
+    const globalKeyword = resolveStringFilter('global');
+    if (globalKeyword) {
+        query.keyword = globalKeyword;
+    }
+    const usernameFilter = resolveStringFilter('username');
+    if (usernameFilter) {
+        query.username = usernameFilter;
+    }
+    const emailFilter = resolveStringFilter('email');
+    if (emailFilter) {
+        query.email = emailFilter;
+    }
+    const statusFilterValue = resolveNumberFilter('status');
+    if (statusFilterValue !== undefined) {
+        query.status = statusFilterValue;
+    }
+    const roleFilterValue = resolveNumberArrayFilter('roleIds');
+    if (roleFilterValue) {
+        query.roleIds = roleFilterValue;
+    }
+    return query;
+}
+
 const roleOptions = computed(() => roles.value.map((role) => ({ label: role.name, value: role.id })));
 
-// 监听搜索条件变化，自动触发搜索（带防抖）
-watch([keyword, statusFilter, roleFilter], () => {
-    debouncedSearch();
-});
+let skipFilterWatch = false;
+
+// 监听过滤条件变化，自动触发服务端搜索（带防抖）
+watch(
+    filters,
+    () => {
+        if (skipFilterWatch) {
+            return;
+        }
+        debouncedSearch();
+    },
+    { deep: true }
+);
 
 onMounted(async () => {
     await loadRoles();
@@ -91,16 +203,8 @@ async function loadUsers() {
 
     loading.value = true;
     try {
-        const data = await fetchUsers(
-            {
-                page: page.value,
-                size: size.value,
-                keyword: keyword.value?.trim() || undefined,
-                status: statusFilter.value ?? undefined,
-                roleId: roleFilter.value ?? undefined
-            },
-            controller.signal
-        );
+        const query = buildQueryFromFilters();
+        const data = await fetchUsers(query, controller.signal);
         users.value = data.items ?? [];
         total.value = data.total ?? 0;
         // 只在服务端返回的 page 与当前 page 不同时才更新（避免不必要的响应式触发）
@@ -148,27 +252,19 @@ async function loadRoles() {
     }
 }
 
-function onSearch() {
-    // 取消防抖定时器，立即搜索
+async function clearFilters() {
     if (debounceTimer) {
         clearTimeout(debounceTimer);
         debounceTimer = null;
     }
+    skipFilterWatch = true;
+    filters.value = createEmptyFilters();
     page.value = 1;
-    loadUsers();
-}
-
-function clearFilters() {
-    // 清除防抖定时器
-    if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
+    try {
+        await loadUsers();
+    } finally {
+        skipFilterWatch = false;
     }
-    keyword.value = '';
-    statusFilter.value = null;
-    roleFilter.value = null;
-    page.value = 1;
-    loadUsers();
 }
 
 function openCreate() {
@@ -297,21 +393,6 @@ function formatDate(value?: string | null) {
     <div class="grid">
         <div class="col-12">
             <div class="card">
-                <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
-                    <div class="flex flex-wrap gap-3 items-end">
-                        <span class="p-input-icon-left">
-                            <InputText v-model="keyword" placeholder="搜索用户名或邮箱" @keyup.enter="onSearch" style="min-width: 18rem" />
-                        </span>
-                        <Dropdown v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="状态" :showClear="true" style="min-width: 10rem" />
-                        <Dropdown v-model="roleFilter" :options="roleOptions" optionLabel="label" optionValue="value" placeholder="角色" :showClear="true" style="min-width: 10rem" />
-                    </div>
-                    <div class="flex gap-2 flex-wrap">
-                        <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
-                        <Button label="重置" icon="pi pi-refresh" severity="secondary" @click="clearFilters" />
-                        <Button label="新建用户" icon="pi pi-plus" severity="success" @click="openCreate" />
-                    </div>
-                </div>
-
                 <DataTable
                     :value="users"
                     dataKey="id"
@@ -319,25 +400,60 @@ function formatDate(value?: string | null) {
                     :rows="size"
                     :paginator="true"
                     :lazy="true"
+                    v-model:filters="filters"
+                    filterDisplay="menu"
+                    :globalFilterFields="['username', 'email']"
                     :totalRecords="total"
                     :rowsPerPageOptions="[10, 20, 50]"
                     :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`"
                     @page="onPageChange"
                     responsiveLayout="scroll"
+                    showGridlines
                 >
-                    <Column field="username" header="用户名" style="min-width: 10rem" />
-                    <Column field="email" header="邮箱" style="min-width: 14rem" />
-                    <Column header="角色" style="min-width: 12rem">
+                    <template #header>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <Button type="button" label="重置" icon="pi pi-filter-slash" outlined @click="clearFilters" />
+                                <IconField>
+                                    <InputIcon>
+                                        <i class="pi pi-search" />
+                                    </InputIcon>
+                                    <InputText
+                                        v-model="(filters['global'] as DataTableFilterMetaData).value"
+                                        placeholder="搜索用户名或邮箱"
+                                    />
+                                </IconField>
+                            </div>
+                            <Button label="新建用户" icon="pi pi-plus" severity="success" @click="openCreate" />
+                        </div>
+                    </template>
+                    <Column field="username" header="用户名" style="min-width: 10rem" :showFilterMatchModes="false">
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" placeholder="输入用户名" class="w-full" />
+                        </template>
+                    </Column>
+                    <Column field="email" header="邮箱" style="min-width: 14rem" :showFilterMatchModes="false">
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" type="text" placeholder="输入邮箱" class="w-full" />
+                        </template>
+                    </Column>
+                    <Column header="角色" filterField="roleIds" :showFilterMatchModes="false" :filterMenuStyle="{ width: '18rem' }" style="min-width: 12rem">
                         <template #body="{ data }">
                             <div class="flex flex-wrap gap-2">
                                 <Tag v-for="role in data.roles" :key="role.id" :value="role.name" />
                                 <span v-if="!data.roles?.length">-</span>
                             </div>
                         </template>
+                        <template #filter="{ filterModel }">
+                            <MultiSelect v-model="filterModel.value" :options="roleOptions" optionLabel="label" optionValue="value" placeholder="选择角色" display="chip" class="w-full" />
+                        </template>
                     </Column>
-                    <Column header="状态" style="min-width: 8rem">
+                    <Column field="status" header="状态" :showFilterMatchModes="false" style="min-width: 8rem">
                         <template #body="{ data }">
                             <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="全部状态" :showClear="true" class="w-full" />
                         </template>
                     </Column>
                     <Column field="createdAt" header="创建时间" style="min-width: 12rem">
