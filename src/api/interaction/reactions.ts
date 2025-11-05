@@ -24,6 +24,7 @@ export interface ReactionQuery {
     entityId?: number;
     kind?: string;
     source?: string;
+    keyword?: string;
 }
 
 export interface ReactionDeletePayload {
@@ -35,18 +36,20 @@ export interface ReactionDeletePayload {
 
 export type ReactionPage = PageResult<ReactionView>;
 
-export function fetchReactions(params: ReactionQuery) {
+export function fetchReactions(params: ReactionQuery, signal?: AbortSignal) {
     return requestData<ReactionPage>({
         url: '/api/admin/interaction/reactions',
         method: 'get',
-        params
+        params,
+        signal
     });
 }
 
-export function deleteReaction(payload: ReactionDeletePayload) {
+export function deleteReaction(payload: ReactionDeletePayload, signal?: AbortSignal) {
     return requestData<void>({
         url: '/api/admin/interaction/reactions',
         method: 'delete',
-        data: payload
+        data: payload,
+        signal
     });
 }

@@ -26,6 +26,7 @@ export interface ModerationTaskQuery {
     reviewerId?: number;
     riskLevel?: string;
     source?: string;
+    keyword?: string;
 }
 
 export interface ModerationAssignPayload {
@@ -41,40 +42,45 @@ export interface ModerationDecisionPayload {
 
 export type ModerationTaskPage = PageResult<ModerationTaskSummary>;
 
-export function fetchModerationTasks(params: ModerationTaskQuery) {
+export function fetchModerationTasks(params: ModerationTaskQuery, signal?: AbortSignal) {
     return requestData<ModerationTaskPage>({
         url: '/api/admin/interaction/moderation/tasks',
         method: 'get',
-        params
+        params,
+        signal
     });
 }
 
-export function fetchModerationTask(taskId: number) {
+export function fetchModerationTask(taskId: number, signal?: AbortSignal) {
     return requestData<ModerationTaskDetail>({
         url: `/api/admin/interaction/moderation/tasks/${taskId}`,
-        method: 'get'
+        method: 'get',
+        signal
     });
 }
 
-export function assignModerationTask(taskId: number, payload: ModerationAssignPayload) {
+export function assignModerationTask(taskId: number, payload: ModerationAssignPayload, signal?: AbortSignal) {
     return requestData<ModerationTaskDetail>({
         url: `/api/admin/interaction/moderation/tasks/${taskId}/assign`,
         method: 'post',
-        data: payload
+        data: payload,
+        signal
     });
 }
 
-export function takeModerationTask(taskId: number) {
+export function takeModerationTask(taskId: number, signal?: AbortSignal) {
     return requestData<ModerationTaskDetail>({
         url: `/api/admin/interaction/moderation/tasks/${taskId}/take`,
-        method: 'post'
+        method: 'post',
+        signal
     });
 }
 
-export function decideModerationTask(taskId: number, payload: ModerationDecisionPayload) {
+export function decideModerationTask(taskId: number, payload: ModerationDecisionPayload, signal?: AbortSignal) {
     return requestData<ModerationTaskDetail>({
         url: `/api/admin/interaction/moderation/tasks/${taskId}/decision`,
         method: 'post',
-        data: payload
+        data: payload,
+        signal
     });
 }

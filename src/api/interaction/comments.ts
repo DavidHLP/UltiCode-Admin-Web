@@ -75,34 +75,38 @@ export interface CommentStatusPayload {
 
 export type CommentPage = PageResult<CommentSummary>;
 
-export function fetchComments(params: CommentQuery) {
+export function fetchComments(params: CommentQuery, signal?: AbortSignal) {
     return requestData<CommentPage>({
         url: '/api/admin/interaction/comments',
         method: 'get',
-        params
+        params,
+        signal
     });
 }
 
-export function fetchComment(commentId: number) {
+export function fetchComment(commentId: number, signal?: AbortSignal) {
     return requestData<CommentDetail>({
         url: `/api/admin/interaction/comments/${commentId}`,
-        method: 'get'
+        method: 'get',
+        signal
     });
 }
 
-export function updateComment(commentId: number, payload: CommentUpdatePayload) {
+export function updateComment(commentId: number, payload: CommentUpdatePayload, signal?: AbortSignal) {
     return requestData<CommentDetail>({
         url: `/api/admin/interaction/comments/${commentId}`,
         method: 'put',
-        data: payload
+        data: payload,
+        signal
     });
 }
 
-export function updateCommentStatus(commentId: number, payload: CommentStatusPayload) {
+export function updateCommentStatus(commentId: number, payload: CommentStatusPayload, signal?: AbortSignal) {
     return requestData<CommentDetail>({
         url: `/api/admin/interaction/comments/${commentId}/status`,
         method: 'put',
-        data: payload
+        data: payload,
+        signal
     });
 }
 

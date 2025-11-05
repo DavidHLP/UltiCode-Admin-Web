@@ -24,6 +24,7 @@ export interface BookmarkQuery {
     entityId?: number;
     visibility?: string;
     source?: string;
+    keyword?: string;
 }
 
 export interface BookmarkDeletePayload {
@@ -34,18 +35,20 @@ export interface BookmarkDeletePayload {
 
 export type BookmarkPage = PageResult<BookmarkView>;
 
-export function fetchBookmarks(params: BookmarkQuery) {
+export function fetchBookmarks(params: BookmarkQuery, signal?: AbortSignal) {
     return requestData<BookmarkPage>({
         url: '/api/admin/interaction/bookmarks',
         method: 'get',
-        params
+        params,
+        signal
     });
 }
 
-export function deleteBookmark(payload: BookmarkDeletePayload) {
+export function deleteBookmark(payload: BookmarkDeletePayload, signal?: AbortSignal) {
     return requestData<void>({
         url: '/api/admin/interaction/bookmarks',
         method: 'delete',
-        data: payload
+        data: payload,
+        signal
     });
 }

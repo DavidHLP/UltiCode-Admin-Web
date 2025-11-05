@@ -33,33 +33,37 @@ export interface SensitiveWordUpsertPayload {
 
 export type SensitiveWordPage = PageResult<SensitiveWordView>;
 
-export function fetchSensitiveWords(params: SensitiveWordQuery) {
+export function fetchSensitiveWords(params: SensitiveWordQuery, signal?: AbortSignal) {
     return requestData<SensitiveWordPage>({
         url: '/api/admin/interaction/sensitive-words',
         method: 'get',
-        params
+        params,
+        signal
     });
 }
 
-export function createSensitiveWord(payload: SensitiveWordUpsertPayload) {
+export function createSensitiveWord(payload: SensitiveWordUpsertPayload, signal?: AbortSignal) {
     return requestData<SensitiveWordView>({
         url: '/api/admin/interaction/sensitive-words',
         method: 'post',
-        data: payload
+        data: payload,
+        signal
     });
 }
 
-export function updateSensitiveWord(id: number, payload: SensitiveWordUpsertPayload) {
+export function updateSensitiveWord(id: number, payload: SensitiveWordUpsertPayload, signal?: AbortSignal) {
     return requestData<SensitiveWordView>({
         url: `/api/admin/interaction/sensitive-words/${id}`,
         method: 'put',
-        data: payload
+        data: payload,
+        signal
     });
 }
 
-export function deleteSensitiveWord(id: number) {
+export function deleteSensitiveWord(id: number, signal?: AbortSignal) {
     return requestData<void>({
         url: `/api/admin/interaction/sensitive-words/${id}`,
-        method: 'delete'
+        method: 'delete',
+        signal
     });
 }

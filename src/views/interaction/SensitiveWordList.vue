@@ -1,10 +1,19 @@
 <script setup lang="ts">
-import { createSensitiveWord, deleteSensitiveWord, fetchSensitiveWords, updateSensitiveWord, type SensitiveWordQuery, type SensitiveWordUpsertPayload, type SensitiveWordView } from '@/api/interaction/sensitive-words';
+import {
+    createSensitiveWord,
+    deleteSensitiveWord,
+    fetchSensitiveWords,
+    updateSensitiveWord,
+    type SensitiveWordQuery,
+    type SensitiveWordUpsertPayload,
+    type SensitiveWordView
+} from '@/api/interaction/sensitive-words';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import type { DataTableFilterMetaData, DataTableOperatorFilterMetaData } from 'primevue/datatable';
 import { useToast } from 'primevue/usetoast';
-import { onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 type LevelOption = { label: string; value: SensitiveWordUpsertPayload['level'] | '' };
-
 type FormModel = {
     word: string;
     category: string;
@@ -13,6 +22,8 @@ type FormModel = {
     description: string;
     active: boolean;
 };
+type FilterValue = DataTableFilterMetaData | DataTableOperatorFilterMetaData;
+type FiltersState = Record<string, FilterValue>;
 
 const words = ref<SensitiveWordView[]>([]);
 const total = ref(0);
@@ -20,10 +31,7 @@ const page = ref(1);
 const size = ref(10);
 const loading = ref(false);
 
-const keyword = ref('');
-const categoryFilter = ref('');
-const levelFilter = ref('');
-const activeFilter = ref<boolean | null>(null);
+const filters = ref<FiltersState>(createEmptyFilters());
 
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
@@ -47,31 +55,156 @@ const levelOptions: LevelOption[] = [
     { label: '替换 (replace)', value: 'replace' }
 ];
 
-onMounted(() => {
-    loadWords();
+const paginationFirst = computed(() => (page.value - 1) * size.value);
+
+let abortController: AbortController | null = null;
+let debounceTimer: NodeJS.Timeout | null = null;
+let skipFilterWatch = false;
+
+watch(
+    filters,
+    () => {
+        if (skipFilterWatch) {
+            return;
+        }
+        debouncedSearch();
+    },
+    { deep: true }
+);
+
+onMounted(async () => {
+    await loadWords();
 });
 
+onBeforeUnmount(() => {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
+    if (abortController) {
+        abortController.abort();
+        abortController = null;
+    }
+});
+
+function createEmptyFilters(): FiltersState {
+    const textFilter = (): DataTableOperatorFilterMetaData => ({
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
+    });
+    const exactFilter = (): DataTableFilterMetaData => ({
+        value: null,
+        matchMode: FilterMatchMode.EQUALS
+    });
+
+    return {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        keyword: textFilter(),
+        category: textFilter(),
+        level: exactFilter(),
+        active: exactFilter()
+    };
+}
+
+function isOperatorFilterMeta(meta: FilterValue | undefined): meta is DataTableOperatorFilterMetaData {
+    return !!meta && typeof meta === 'object' && 'constraints' in meta;
+}
+
+function resolveRawFilterValue(field: string): unknown {
+    const meta = filters.value[field];
+    if (!meta) {
+        return undefined;
+    }
+    if (isOperatorFilterMeta(meta)) {
+        const [constraint] = meta.constraints ?? [];
+        return constraint?.value;
+    }
+    return meta.value;
+}
+
+function resolveStringFilter(field: string): string | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (typeof raw !== 'string') {
+        return undefined;
+    }
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function resolveBooleanFilter(field: string): boolean | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (raw === true || raw === 'true') {
+        return true;
+    }
+    if (raw === false || raw === 'false') {
+        return false;
+    }
+    return undefined;
+}
+
+function buildQueryFromFilters(): SensitiveWordQuery {
+    const query: SensitiveWordQuery = {
+        page: page.value,
+        size: size.value
+    };
+
+    const keywordFilter = resolveStringFilter('keyword');
+    const globalFilter = resolveStringFilter('global');
+    if (keywordFilter) {
+        query.keyword = keywordFilter;
+    } else if (globalFilter) {
+        query.keyword = globalFilter;
+    }
+
+    const category = resolveStringFilter('category');
+    if (category) {
+        query.category = category;
+    }
+    const level = resolveStringFilter('level');
+    if (level) {
+        query.level = level;
+    }
+    const active = resolveBooleanFilter('active');
+    if (active !== undefined) {
+        query.active = active;
+    }
+
+    return query;
+}
+
+function debouncedSearch() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+        page.value = 1;
+        loadWords();
+    }, 300);
+}
+
 async function loadWords() {
+    if (abortController) {
+        abortController.abort();
+    }
+    const controller = new AbortController();
+    abortController = controller;
+
     loading.value = true;
     try {
-        const params: SensitiveWordQuery = {
-            page: page.value,
-            size: size.value,
-            keyword: keyword.value.trim() || undefined,
-            category: categoryFilter.value.trim() || undefined,
-            level: levelFilter.value || undefined,
-            active: activeFilter.value ?? undefined
-        };
-        const data = await fetchSensitiveWords(params);
+        const params = buildQueryFromFilters();
+        const data = await fetchSensitiveWords(params, controller.signal);
         words.value = data.items ?? [];
         total.value = data.total ?? 0;
-        if (typeof data.page === 'number') {
-            page.value = Math.max(1, Number(data.page));
+        if (data.page !== undefined && Number(data.page) !== page.value) {
+            page.value = Number(data.page);
         }
-        if (typeof data.size === 'number' && Number(data.size) > 0) {
+        if (data.size !== undefined && Number(data.size) !== size.value) {
             size.value = Number(data.size);
         }
-    } catch (error) {
+    } catch (error: any) {
+        if (error?.name === 'AbortError' || error?.name === 'CanceledError') {
+            return;
+        }
         toast.add({
             severity: 'error',
             summary: '加载失败',
@@ -79,22 +212,26 @@ async function loadWords() {
             life: 4000
         });
     } finally {
-        loading.value = false;
+        if (abortController === controller) {
+            loading.value = false;
+            abortController = null;
+        }
     }
 }
 
-function onSearch() {
+async function clearFilters() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
+    skipFilterWatch = true;
+    filters.value = createEmptyFilters();
     page.value = 1;
-    loadWords();
-}
-
-function resetFilters() {
-    keyword.value = '';
-    categoryFilter.value = '';
-    levelFilter.value = '';
-    activeFilter.value = null;
-    page.value = 1;
-    loadWords();
+    try {
+        await loadWords();
+    } finally {
+        skipFilterWatch = false;
+    }
 }
 
 function onPageChange(event: { page: number; rows: number }) {
@@ -219,14 +356,13 @@ async function toggleWordActive(word: SensitiveWordView) {
 }
 
 function copyWord(word: SensitiveWordView) {
-    const info = `${word.word} (${word.level})`;
     navigator.clipboard
         .writeText(word.word)
         .then(() => {
             toast.add({
                 severity: 'success',
                 summary: '复制成功',
-                detail: `已复制: ${info}`,
+                detail: `已复制: ${word.word}`,
                 life: 3000
             });
         })
@@ -239,61 +375,140 @@ function copyWord(word: SensitiveWordView) {
             });
         });
 }
+
+function getActiveSeverity(active: boolean) {
+    return active ? 'success' : 'danger';
+}
 </script>
 
 <template>
     <div class="grid">
         <div class="col-12">
             <div class="card">
-                <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
-                    <div class="flex flex-wrap gap-3 items-end">
-                        <InputText v-model="keyword" placeholder="敏感词 / 描述" style="min-width: 16rem"
-                            @keyup.enter="onSearch" />
-                        <InputText v-model="categoryFilter" placeholder="分类" style="min-width: 12rem"
-                            @keyup.enter="onSearch" />
-                        <Dropdown v-model="levelFilter" :options="levelOptions" optionLabel="label" optionValue="value"
-                            placeholder="处理等级" style="width: 12rem" />
-                        <Dropdown v-model="activeFilter" :options="[
-                            { label: '全部状态', value: null },
-                            { label: '启用', value: true },
-                            { label: '停用', value: false }
-                        ]" optionLabel="label" optionValue="value" placeholder="状态" style="width: 10rem" />
-                    </div>
-                    <div class="flex gap-2 flex-wrap">
-                        <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
-                        <Button label="重置" icon="pi pi-refresh" severity="secondary" @click="resetFilters" />
-                        <Button label="新增" icon="pi pi-plus" @click="openCreate" />
-                    </div>
-                </div>
+                <DataTable
+                    :value="words"
+                    dataKey="id"
+                    :loading="loading"
+                    :rows="size"
+                    :paginator="true"
+                    :lazy="true"
+                    v-model:filters="filters"
+                    filterDisplay="menu"
+                    :globalFilterFields="['word', 'category', 'description']"
+                    :totalRecords="total"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    :first="paginationFirst"
+                    :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`"
+                    @page="onPageChange"
+                    responsiveLayout="scroll"
+                    showGridlines
+                >
+                    <template #header>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <Button type="button" label="重置筛选" icon="pi pi-filter-slash" outlined @click="clearFilters" />
+                                <IconField>
+                                    <InputIcon>
+                                        <i class="pi pi-search" />
+                                    </InputIcon>
+                                    <InputText
+                                        v-model="(filters['global'] as DataTableFilterMetaData).value"
+                                        placeholder="搜索敏感词或描述"
+                                    />
+                                </IconField>
+                            </div>
+                            <Button label="新增敏感词" icon="pi pi-plus" @click="openCreate" />
+                        </div>
+                    </template>
 
-                <DataTable :value="words" :loading="loading" :paginator="true" :lazy="true" :rows="size"
-                    :totalRecords="total" :rowsPerPageOptions="[10, 20, 50]" :first="(page - 1) * size" dataKey="id"
-                    responsiveLayout="scroll" @page="onPageChange">
-                    <Column field="word" header="敏感词" sortable />
-                    <Column field="category" header="分类" sortable />
-                    <Column field="level" header="处理方式" sortable />
-                    <Column field="replacement" header="替换词" />
-                    <Column field="description" header="描述">
-                        <template #body="slotProps">
-                            <span class="block text-overflow-ellipsis whitespace-nowrap" style="max-width: 16rem">{{
-                                slotProps.data.description ?? '-' }}</span>
+                    <Column field="word" header="敏感词" filterField="keyword" :showFilterMatchModes="false" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            <span class="font-medium">{{ data.word }}</span>
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" placeholder="模糊搜索敏感词" class="w-full" />
                         </template>
                     </Column>
-                    <Column field="active" header="状态">
-                        <template #body="slotProps">
-                            <Tag :value="slotProps.data.active ? '启用' : '停用'"
-                                :severity="slotProps.data.active ? 'success' : 'danger'" />
+                    <Column field="category" header="分类" filterField="category" :showFilterMatchModes="false" style="min-width: 10rem">
+                        <template #filter="{ filterModel }">
+                            <InputText v-model="filterModel.value" placeholder="分类" class="w-full" />
                         </template>
                     </Column>
-                    <Column field="updatedAt" header="更新时间" sortable />
-                    <Column header="操作">
-                        <template #body="slotProps">
-                            <SplitButton label="编辑" icon="pi pi-pencil" size="small" :model="[
-                                { label: '删除', icon: 'pi pi-trash', command: () => removeWord(slotProps.data) },
-                                { label: slotProps.data.active ? '停用' : '启用', icon: slotProps.data.active ? 'pi pi-ban' : 'pi pi-check', command: () => toggleWordActive(slotProps.data) }
-                            ]" @click="openEdit(slotProps.data)" />
+                    <Column field="level" header="处理方式" filterField="level" :showFilterMatchModes="false" style="min-width: 10rem">
+                        <template #filter="{ filterModel }">
+                            <Dropdown
+                                v-model="filterModel.value"
+                                :options="levelOptions"
+                                optionLabel="label"
+                                optionValue="value"
+                                placeholder="全部等级"
+                                class="w-full"
+                            />
                         </template>
                     </Column>
+                    <Column field="replacement" header="替换词" style="min-width: 10rem">
+                        <template #body="{ data }">
+                            {{ data.replacement ?? '-' }}
+                        </template>
+                    </Column>
+                    <Column field="description" header="描述" style="min-width: 16rem">
+                        <template #body="{ data }">
+                            <span class="block text-overflow-ellipsis whitespace-nowrap" style="max-width: 16rem">
+                                {{ data.description ?? '-' }}
+                            </span>
+                        </template>
+                    </Column>
+                    <Column field="active" header="状态" filterField="active" :showFilterMatchModes="false" style="min-width: 8rem">
+                        <template #body="{ data }">
+                            <Tag :value="data.active ? '启用' : '停用'" :severity="getActiveSeverity(data.active)" />
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown
+                                v-model="filterModel.value"
+                                :options="[
+                                    { label: '全部', value: null },
+                                    { label: '启用', value: true },
+                                    { label: '停用', value: false }
+                                ]"
+                                optionLabel="label"
+                                optionValue="value"
+                                placeholder="状态"
+                                class="w-full"
+                            />
+                        </template>
+                    </Column>
+                    <Column field="updatedAt" header="更新时间" sortable style="min-width: 12rem" />
+                    <Column header="操作" style="min-width: 12rem">
+                        <template #body="{ data }">
+                            <SplitButton
+                                label="编辑"
+                                icon="pi pi-pencil"
+                                size="small"
+                                :model="[
+                                    {
+                                        label: data.active ? '停用' : '启用',
+                                        icon: data.active ? 'pi pi-ban' : 'pi pi-check',
+                                        command: () => toggleWordActive(data)
+                                    },
+                                    {
+                                        label: '删除',
+                                        icon: 'pi pi-trash',
+                                        command: () => removeWord(data)
+                                    },
+                                    {
+                                        label: '复制词条',
+                                        icon: 'pi pi-copy',
+                                        command: () => copyWord(data)
+                                    }
+                                ]"
+                                @click="openEdit(data)"
+                            />
+                        </template>
+                    </Column>
+
+                    <template #empty>
+                        <div class="py-6 text-center text-color-secondary">暂无数据</div>
+                    </template>
                 </DataTable>
             </div>
         </div>
@@ -303,8 +518,13 @@ function copyWord(word: SensitiveWordView) {
         <div class="flex flex-column gap-3">
             <InputText v-model="form.word" placeholder="敏感词" />
             <InputText v-model="form.category" placeholder="分类 (可选)" />
-            <Dropdown v-model="form.level" :options="levelOptions.slice(1)" optionLabel="label" optionValue="value"
-                placeholder="处理等级" />
+            <Dropdown
+                v-model="form.level"
+                :options="levelOptions.slice(1)"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="处理等级"
+            />
             <InputText v-model="form.replacement" placeholder="替换词 (替换模式下可选)" />
             <Textarea v-model="form.description" rows="4" placeholder="描述" autoResize />
             <div class="flex items-center gap-2">
