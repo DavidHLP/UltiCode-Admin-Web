@@ -1,24 +1,28 @@
 <script setup lang="ts">
 import { fetchProblemOptions, fetchProblems, type DictionaryOption, type ProblemOptions, type ProblemQuery, type ProblemSummary } from '@/api/problem/problem.ts';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import type { DataTableFilterMetaData, DataTableOperatorFilterMetaData } from 'primevue/datatable';
 import { useToast } from 'primevue/usetoast';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+
+const DEFAULT_LANG_CODE = 'zh-CN';
+
+type FilterValue = DataTableFilterMetaData | DataTableOperatorFilterMetaData;
+type FiltersState = Record<string, FilterValue>;
+type ProblemVisibility = 'public' | 'private';
+type OptionItem<T> = { label: string; value: T };
 
 const router = useRouter();
 const toast = useToast();
-
-const DEFAULT_LANG_CODE = 'zh-CN';
 
 const problems = ref<ProblemSummary[]>([]);
 const total = ref(0);
 const page = ref(1);
 const size = ref(10);
-const keyword = ref('');
-const problemTypeFilter = ref<string | null>(null);
-const difficultyFilter = ref<number | null>(null);
-const categoryFilter = ref<number | null>(null);
-const visibilityFilter = ref<'public' | 'private' | null>(null);
 const loading = ref(false);
+
+const filters = ref<FiltersState>(createEmptyFilters());
 
 const problemTypes = ref<string[]>([]);
 const difficulties = ref<DictionaryOption[]>([]);
@@ -33,19 +37,54 @@ const problemTypeLabels: Record<string, string> = {
     'output-only': '输出题'
 };
 
-const visibilityOptions = [
-    { label: '公开', value: 'public' as const },
-    { label: '私有', value: 'private' as const }
+const visibilityOptions: OptionItem<ProblemVisibility | ''>[] = [
+    { label: '全部', value: '' },
+    { label: '公开', value: 'public' },
+    { label: '私有', value: 'private' }
 ];
 
-const difficultyOptions = computed(() => difficulties.value.map((item) => ({ label: item.name ?? item.code, value: item.id })));
-const categoryOptions = computed(() => categories.value.map((item) => ({ label: item.name, value: item.id })));
-const problemTypeOptions = computed(() =>
+const lifecycleStatusOptions: OptionItem<string | ''>[] = [
+    { label: '全部', value: '' },
+    { label: '草稿', value: 'draft' },
+    { label: '审核中', value: 'in_review' },
+    { label: '审核通过', value: 'approved' },
+    { label: '待发布', value: 'ready' },
+    { label: '已发布', value: 'published' },
+    { label: '已归档', value: 'archived' }
+];
+
+const reviewStatusOptions: OptionItem<string | ''>[] = [
+    { label: '全部', value: '' },
+    { label: '待审核', value: 'pending' },
+    { label: '已通过', value: 'approved' },
+    { label: '已驳回', value: 'rejected' }
+];
+
+const problemTypeOptions = computed<OptionItem<string>[]>(() =>
     problemTypes.value.map((type) => ({
         label: problemTypeLabels[type] ?? type,
         value: type
     }))
 );
+const problemTypeFilterOptions = computed(() => [{ label: '全部', value: null }, ...problemTypeOptions.value]);
+
+const difficultyOptions = computed<OptionItem<number>[]>(() =>
+    difficulties.value.map((item) => ({
+        label: item.name ?? item.code,
+        value: item.id
+    }))
+);
+const difficultyFilterOptions = computed(() => [{ label: '全部', value: null }, ...difficultyOptions.value]);
+
+const categoryOptions = computed<OptionItem<number>[]>(() =>
+    categories.value.map((item) => ({
+        label: item.name,
+        value: item.id
+    }))
+);
+const categoryFilterOptions = computed(() => [{ label: '全部', value: null }, ...categoryOptions.value]);
+
+const visibilityFilterOptions = computed(() => visibilityOptions);
 
 const difficultyNameMap = computed(() => {
     const map = new Map<number, string>();
@@ -63,26 +102,164 @@ const categoryNameMap = computed(() => {
     return map;
 });
 
+const lifecycleLabelMap: Record<string, string> = {
+    draft: '草稿',
+    in_review: '审核中',
+    approved: '审核通过',
+    ready: '待发布',
+    published: '已发布',
+    archived: '已归档'
+};
+
+const reviewLabelMap: Record<string, string> = {
+    pending: '待审核',
+    approved: '已通过',
+    rejected: '已驳回'
+};
+
+const paginationFirst = computed(() => (page.value - 1) * size.value);
+
 let abortController: AbortController | null = null;
 let debounceTimer: NodeJS.Timeout | null = null;
+let skipFilterWatch = false;
 
-watch([keyword, problemTypeFilter, difficultyFilter, categoryFilter, visibilityFilter], () => {
-    debouncedSearch();
-});
+watch(
+    filters,
+    () => {
+        if (skipFilterWatch) {
+            return;
+        }
+        debouncedSearch();
+    },
+    { deep: true }
+);
 
 onMounted(async () => {
     await loadOptions();
     await loadProblems();
 });
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
     if (abortController) {
         abortController.abort();
+        abortController = null;
     }
     if (debounceTimer) {
         clearTimeout(debounceTimer);
+        debounceTimer = null;
     }
 });
+
+function createEmptyFilters(): FiltersState {
+    const textFilter = (): DataTableOperatorFilterMetaData => ({
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
+    });
+    const exactFilter = (): DataTableFilterMetaData => ({
+        value: null,
+        matchMode: FilterMatchMode.EQUALS
+    });
+
+    return {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        problemType: exactFilter(),
+        difficultyId: exactFilter(),
+        categoryId: exactFilter(),
+        isPublic: exactFilter(),
+        lifecycleStatus: exactFilter(),
+        reviewStatus: exactFilter()
+    };
+}
+
+function isOperatorFilterMeta(meta: FilterValue | undefined): meta is DataTableOperatorFilterMetaData {
+    return !!meta && typeof meta === 'object' && 'constraints' in meta;
+}
+
+function resolveRawFilterValue(field: string): unknown {
+    const meta = filters.value[field];
+    if (!meta) {
+        return undefined;
+    }
+    if (isOperatorFilterMeta(meta)) {
+        const [constraint] = meta.constraints ?? [];
+        return constraint?.value;
+    }
+    return meta.value;
+}
+
+function resolveStringFilter(field: string): string | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (typeof raw !== 'string') {
+        return undefined;
+    }
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function resolveNumberFilter(field: string): number | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (raw === null || raw === undefined || raw === '') {
+        return undefined;
+    }
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+function resolveBooleanFilter(field: string): boolean | undefined {
+    const raw = resolveRawFilterValue(field);
+    if (raw === true || raw === 'true') {
+        return true;
+    }
+    if (raw === false || raw === 'false') {
+        return false;
+    }
+    if (raw === 'public') {
+        return true;
+    }
+    if (raw === 'private') {
+        return false;
+    }
+    return undefined;
+}
+
+function buildQueryFromFilters(): ProblemQuery {
+    const query: ProblemQuery = {
+        page: page.value,
+        size: size.value,
+        langCode: DEFAULT_LANG_CODE
+    };
+
+    const keyword = resolveStringFilter('global');
+    if (keyword) {
+        query.keyword = keyword;
+    }
+    const problemType = resolveStringFilter('problemType');
+    if (problemType) {
+        query.problemType = problemType;
+    }
+    const difficultyId = resolveNumberFilter('difficultyId');
+    if (difficultyId !== undefined) {
+        query.difficultyId = difficultyId;
+    }
+    const categoryId = resolveNumberFilter('categoryId');
+    if (categoryId !== undefined) {
+        query.categoryId = categoryId;
+    }
+    const isPublic = resolveBooleanFilter('isPublic');
+    if (isPublic !== undefined) {
+        query.isPublic = isPublic;
+    }
+    const lifecycleStatus = resolveStringFilter('lifecycleStatus');
+    if (lifecycleStatus) {
+        query.lifecycleStatus = lifecycleStatus;
+    }
+    const reviewStatus = resolveStringFilter('reviewStatus');
+    if (reviewStatus) {
+        query.reviewStatus = reviewStatus;
+    }
+
+    return query;
+}
 
 function debouncedSearch() {
     if (debounceTimer) {
@@ -119,16 +296,7 @@ async function loadProblems() {
 
     loading.value = true;
     try {
-        const params: ProblemQuery = {
-            page: page.value,
-            size: size.value,
-            keyword: keyword.value?.trim() || undefined,
-            problemType: problemTypeFilter.value ?? undefined,
-            difficultyId: difficultyFilter.value ?? undefined,
-            categoryId: categoryFilter.value ?? undefined,
-            isPublic: visibilityFilter.value === null ? undefined : visibilityFilter.value === 'public',
-            langCode: DEFAULT_LANG_CODE
-        };
+        const params = buildQueryFromFilters();
         const data = await fetchProblems(params, controller.signal);
         problems.value = data.items ?? [];
         total.value = data.total ?? 0;
@@ -156,27 +324,33 @@ async function loadProblems() {
     }
 }
 
-function onSearch() {
+async function clearFilters() {
     if (debounceTimer) {
         clearTimeout(debounceTimer);
         debounceTimer = null;
     }
+    skipFilterWatch = true;
+    filters.value = createEmptyFilters();
     page.value = 1;
+    try {
+        await loadProblems();
+    } finally {
+        skipFilterWatch = false;
+    }
+}
+
+function onPageChange(event: { page: number; rows: number }) {
+    page.value = event.page + 1;
+    size.value = event.rows;
     loadProblems();
 }
 
-function clearFilters() {
-    if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
-    }
-    keyword.value = '';
-    problemTypeFilter.value = null;
-    difficultyFilter.value = null;
-    categoryFilter.value = null;
-    visibilityFilter.value = null;
-    page.value = 1;
-    loadProblems();
+function visibilitySeverity(flag: boolean) {
+    return flag ? 'success' : 'info';
+}
+
+function visibilityLabel(flag: boolean) {
+    return flag ? '公开' : '私有';
 }
 
 function problemTypeLabel(type: string) {
@@ -197,12 +371,18 @@ function categoryLabel(id?: number | null) {
     return categoryNameMap.value.get(id) ?? '-';
 }
 
-function visibilitySeverity(flag: boolean) {
-    return flag ? 'success' : 'info';
+function lifecycleLabel(status?: string | null) {
+    if (!status) {
+        return '-';
+    }
+    return lifecycleLabelMap[status] ?? status;
 }
 
-function visibilityLabel(flag: boolean) {
-    return flag ? '公开' : '私有';
+function reviewLabel(status?: string | null) {
+    if (!status) {
+        return '-';
+    }
+    return reviewLabelMap[status] ?? status;
 }
 
 function formatDate(value?: string | null) {
@@ -229,35 +409,12 @@ function openCreate() {
 function openEdit(problem: ProblemSummary) {
     router.push({ name: 'adminProblemsEdit', params: { problemId: problem.id } });
 }
-
-function onPageChange(event: { page: number; rows: number }) {
-    page.value = event.page + 1;
-    size.value = event.rows;
-    loadProblems();
-}
 </script>
 
 <template>
     <div class="grid">
         <div class="col-12">
             <div class="card">
-                <div class="flex flex-wrap gap-3 items-end justify-between mb-4">
-                    <div class="flex flex-wrap gap-3 items-end">
-                        <span class="p-input-icon-left">
-                            <InputText v-model="keyword" placeholder="搜索题目别名或标题" @keyup.enter="onSearch" style="min-width: 18rem" />
-                        </span>
-                        <Dropdown v-model="problemTypeFilter" :options="problemTypeOptions" optionLabel="label" optionValue="value" placeholder="题目类型" :showClear="true" style="min-width: 10rem" />
-                        <Dropdown v-model="difficultyFilter" :options="difficultyOptions" optionLabel="label" optionValue="value" placeholder="难度" :showClear="true" style="min-width: 10rem" />
-                        <Dropdown v-model="categoryFilter" :options="categoryOptions" optionLabel="label" optionValue="value" placeholder="分类" :showClear="true" style="min-width: 12rem" />
-                        <Dropdown v-model="visibilityFilter" :options="visibilityOptions" optionLabel="label" optionValue="value" placeholder="公开状态" :showClear="true" style="min-width: 10rem" />
-                    </div>
-                    <div class="flex gap-2 flex-wrap">
-                        <Button label="筛选" icon="pi pi-filter" @click="onSearch" />
-                        <Button label="重置" icon="pi pi-refresh" severity="secondary" @click="clearFilters" />
-                        <Button label="新建题目" icon="pi pi-plus" severity="success" @click="openCreate" />
-                    </div>
-                </div>
-
                 <DataTable
                     :value="problems"
                     dataKey="id"
@@ -265,39 +422,87 @@ function onPageChange(event: { page: number; rows: number }) {
                     :rows="size"
                     :paginator="true"
                     :lazy="true"
+                    v-model:filters="filters"
+                    filterDisplay="menu"
+                    :globalFilterFields="['slug', 'title', 'categoryName']"
                     :totalRecords="total"
                     :rowsPerPageOptions="[10, 20, 50]"
+                    :first="paginationFirst"
                     :currentPageReportTemplate="`第 ${page} 页，共 ${Math.ceil(total / size) || 1} 页`"
                     @page="onPageChange"
                     responsiveLayout="scroll"
+                    showGridlines
                 >
-                    <Column field="title" header="标题" style="min-width: 14rem">
+                    <template #header>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <Button type="button" label="重置筛选" icon="pi pi-filter-slash" outlined @click="clearFilters" />
+                                <IconField>
+                                    <InputIcon>
+                                        <i class="pi pi-search" />
+                                    </InputIcon>
+                                    <InputText v-model="(filters['global'] as DataTableFilterMetaData).value" placeholder="搜索题目别名或标题" />
+                                </IconField>
+                            </div>
+                            <Button label="新建题目" icon="pi pi-plus" severity="success" @click="openCreate" />
+                        </div>
+                    </template>
+
+                    <Column field="title" header="标题" style="min-width: 10rem">
                         <template #body="{ data }">
                             {{ data.title || data.slug }}
                         </template>
                     </Column>
-                    <Column field="slug" header="别名" style="min-width: 12rem" />
-                    <Column field="problemType" header="类型" style="min-width: 8rem">
+                    <Column field="slug" header="别名" style="min-width: 10rem" />
+                    <Column field="problemType" header="类型" filterField="problemType" :showFilterMatchModes="false" style="min-width: 9rem">
                         <template #body="{ data }">
                             {{ problemTypeLabel(data.problemType) }}
                         </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="problemTypeFilterOptions" optionLabel="label" optionValue="value" placeholder="全部" class="w-full" />
+                        </template>
                     </Column>
-                    <Column field="difficultyId" header="难度" style="min-width: 8rem">
+                    <Column field="difficultyId" header="难度" filterField="difficultyId" :showFilterMatchModes="false" style="min-width: 6rem">
                         <template #body="{ data }">
                             {{ difficultyLabel(data.difficultyId) }}
                         </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="difficultyFilterOptions" optionLabel="label" optionValue="value" placeholder="全部" class="w-full" />
+                        </template>
                     </Column>
-                    <Column field="categoryId" header="分类" style="min-width: 10rem">
+                    <Column field="categoryId" header="分类" filterField="categoryId" :showFilterMatchModes="false" style="min-width: 8rem">
                         <template #body="{ data }">
                             {{ categoryLabel(data.categoryId) }}
                         </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="categoryFilterOptions" optionLabel="label" optionValue="value" placeholder="全部" class="w-full" />
+                        </template>
                     </Column>
-                    <Column field="isPublic" header="公开状态" style="min-width: 8rem">
+                    <Column field="isPublic" header="公开状态" filterField="isPublic" :showFilterMatchModes="false" style="min-width: 10rem">
                         <template #body="{ data }">
                             <Tag :value="visibilityLabel(data.isPublic)" :severity="visibilitySeverity(data.isPublic)" />
                         </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="visibilityFilterOptions" optionLabel="label" optionValue="value" placeholder="全部" class="w-full" />
+                        </template>
                     </Column>
-                    <Column field="updatedAt" header="更新时间" style="min-width: 12rem">
+                    <Column field="lifecycleStatus" header="生命周期" filterField="lifecycleStatus" :showFilterMatchModes="false" style="min-width: 10rem">
+                        <template #body="{ data }">
+                            {{ lifecycleLabel(data.lifecycleStatus) }}
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="lifecycleStatusOptions" optionLabel="label" optionValue="value" placeholder="全部" class="w-full" />
+                        </template>
+                    </Column>
+                    <Column field="reviewStatus" header="审核状态" filterField="reviewStatus" :showFilterMatchModes="false" style="min-width: 10rem">
+                        <template #body="{ data }">
+                            {{ reviewLabel(data.reviewStatus) }}
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <Dropdown v-model="filterModel.value" :options="reviewStatusOptions" optionLabel="label" optionValue="value" placeholder="全部" class="w-full" />
+                        </template>
+                    </Column>
+                    <Column field="updatedAt" header="更新时间" sortable style="min-width: 12rem">
                         <template #body="{ data }">
                             {{ formatDate(data.updatedAt) }}
                         </template>
@@ -310,7 +515,7 @@ function onPageChange(event: { page: number; rows: number }) {
                             </div>
                         </template>
                     </Column>
-                    <Column header="操作" style="min-width: 8rem">
+                    <Column header="操作" style="min-width: 9rem">
                         <template #body="{ data }">
                             <SplitButton
                                 label="编辑"
@@ -327,6 +532,7 @@ function onPageChange(event: { page: number; rows: number }) {
                             />
                         </template>
                     </Column>
+
                     <template #empty>
                         <div class="py-6 text-center text-color-secondary">暂无题目</div>
                     </template>
